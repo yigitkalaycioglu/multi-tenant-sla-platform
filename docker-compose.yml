@@ -1,0 +1,141 @@
+# Cok kiracili is takip & SLA yonetim platformu
+# Tek komutla ayaga kaldirma:  docker compose up --build
+#
+# Servisler:
+#   postgres  - iliskisel veri, RLS ile kiraci izolasyonu
+#   redis     - BullMQ kuyrugu, hiz siniri sayaci, Socket.io olay veri yolu
+#   mailpit   - gelistirme SMTP sunucusu (arayuz: http://localhost:8025)
+#   migrate   - tek seferlik: sema migrasyonu (+ istege bagli demo verisi)
+#   api       - Express + Socket.io
+#   worker    - BullMQ: SLA tarayicisi ve e-posta bildirimleri
+#   web       - React (nginx); /api ve /socket.io api servisine vekillenir
+
+name: sla-platform
+
+x-app-env: &app-env
+  NODE_ENV: production
+  TZ: ${TZ:-Europe/Istanbul}
+  DATABASE_ADMIN_URL: postgres://${POSTGRES_USER:-postgres}:${POSTGRES_PASSWORD:-postgres}@postgres:5432/${POSTGRES_DB:-sla_platform}
+  DATABASE_URL: postgres://${APP_DB_USER:-app_user}:${APP_DB_PASSWORD:-app_user_pw}@postgres:5432/${POSTGRES_DB:-sla_platform}
+  APP_DB_USER: ${APP_DB_USER:-app_user}
+  APP_DB_PASSWORD: ${APP_DB_PASSWORD:-app_user_pw}
+  REDIS_URL: redis://redis:6379
+  JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-dev-access-secret-change-me-0123456789abcdef}
+  JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me-fedcba9876543210}
+  ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
+  REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
+  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+  SLA_SCAN_INTERVAL_MS: ${SLA_SCAN_INTERVAL_MS:-60000}
+  SLA_RISK_THRESHOLD: ${SLA_RISK_THRESHOLD:-0.8}
+  SMTP_HOST: mailpit
+  SMTP_PORT: 1025
+  SMTP_SECURE: "false"
+  MAIL_FROM: ${MAIL_FROM:-SLA Platform <no-reply@slaplatform.local>}
+  APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8080}
+  SEED_PASSWORD: ${SEED_PASSWORD:-Passw0rd!}
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${POSTGRES_USER:-postgres}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres}
+      POSTGRES_DB: ${POSTGRES_DB:-sla_platform}
+      # Turkce siralama/karsilastirma tutarliligi
+      LANG: C.UTF-8
+    ports:
+      - '${POSTGRES_PORT:-5432}:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-postgres} -d ${POSTGRES_DB:-sla_platform}']
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    command: ['redis-server', '--appendonly', 'yes']
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    volumes:
+      - redisdata:/data
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  mailpit:
+    image: axllent/mailpit:latest
+    restart: unless-stopped
+    ports:
+      - '8025:8025' # web arayuzu: gonderilen SLA e-postalari burada gorulur
+      - '1025:1025' # SMTP
+    healthcheck:
+      test: ['CMD', '/mailpit', 'readyz']
+      interval: 10s
+      timeout: 3s
+      retries: 10
+
+  migrate:
+    build:
+      context: ./server
+    environment:
+      <<: *app-env
+      SEED_DEMO: ${SEED_DEMO:-true}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # Sema + dusuk yetkili rol; SEED_DEMO=true ise iki demo kiraci olusturulur.
+    command:
+      - sh
+      - -c
+      - 'node dist/db/migrate.js && if [ "$$SEED_DEMO" = "true" ]; then node dist/db/seed.js; fi'
+    restart: 'no'
+
+  api:
+    build:
+      context: ./server
+    restart: unless-stopped
+    environment:
+      <<: *app-env
+      PORT: 4000
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    ports:
+      - '${API_PORT:-4000}:4000'
+
+  worker:
+    build:
+      context: ./server
+    restart: unless-stopped
+    environment: *app-env
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      migrate:
+        condition: service_completed_successfully
+    command: ['node', 'dist/queue/worker.js']
+
+  web:
+    build:
+      context: ./web
+    restart: unless-stopped
+    depends_on:
+      - api
+    ports:
+      - '${WEB_PORT:-8080}:80'
+
+volumes:
+  pgdata:
+  redisdata:
