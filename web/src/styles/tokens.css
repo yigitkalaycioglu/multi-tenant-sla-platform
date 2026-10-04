@@ -1,0 +1,120 @@
+/* ===========================================================================
+   Tasarim jetonlari (design tokens)
+   ---------------------------------------------------------------------------
+   Veri gorsellestirme renkleri dogrulanmis bir paletten gelir:
+     - Kategorik slotlar sabit sirayla atanir (slot 1 mavi, slot 2 turuncu);
+       renk seriyi temsil eder, siralamayi degil.
+     - Durum renkleri (iyi / uyari / kritik) yalnizca DURUM anlatir ve daima
+       ikon + etiketle birlikte kullanilir; hicbir zaman tek basina renk
+       anlam tasimaz.
+     - Acik ve koyu mod ayri ayri secilmis adimlardir, otomatik ters cevirme
+       degildir.
+   =========================================================================== */
+
+:root {
+  color-scheme: light;
+
+  /* Yuzeyler & murekkep */
+  --plane: #f9f9f7;
+  --surface-1: #fcfcfb;
+  --surface-2: #f2f1ed;
+  --surface-hover: #eeede8;
+  --ink-1: #0b0b0b;
+  --ink-2: #52514e;
+  --ink-3: #898781;
+  --border: rgba(11, 11, 11, 0.1);
+  --border-strong: rgba(11, 11, 11, 0.18);
+
+  /* Grafik kromu */
+  --grid: #e1e0d9;
+  --axis: #c3c2b7;
+
+  /* Kategorik seriler — sabit sira */
+  --series-1: #2a78d6;
+  --series-2: #eb6834;
+  --series-1-soft: rgba(42, 120, 214, 0.14);
+  --series-2-soft: rgba(235, 104, 52, 0.14);
+
+  /* Durum paleti (temaya gore degismez) */
+  --status-good: #0ca30c;
+  --status-warning: #fab219;
+  --status-serious: #ec835a;
+  --status-critical: #d03b3b;
+  --success-text: #006300;
+
+  /* Etkilesim */
+  --accent: #2a78d6;
+  --accent-ink: #ffffff;
+  --accent-soft: rgba(42, 120, 214, 0.12);
+  --focus-ring: rgba(42, 120, 214, 0.45);
+  --shadow-1: 0 1px 2px rgba(11, 11, 11, 0.06), 0 8px 24px rgba(11, 11, 11, 0.06);
+  --shadow-2: 0 12px 40px rgba(11, 11, 11, 0.16);
+
+  /* Olcek */
+  --radius-sm: 6px;
+  --radius: 10px;
+  --radius-lg: 14px;
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme='light']) {
+    color-scheme: dark;
+
+    --plane: #0d0d0d;
+    --surface-1: #1a1a19;
+    --surface-2: #232322;
+    --surface-hover: #2c2c2a;
+    --ink-1: #ffffff;
+    --ink-2: #c3c2b7;
+    --ink-3: #898781;
+    --border: rgba(255, 255, 255, 0.1);
+    --border-strong: rgba(255, 255, 255, 0.2);
+
+    --grid: #2c2c2a;
+    --axis: #383835;
+
+    --series-1: #3987e5;
+    --series-2: #d95926;
+    --series-1-soft: rgba(57, 135, 229, 0.18);
+    --series-2-soft: rgba(217, 89, 38, 0.18);
+
+    --success-text: #0ca30c;
+
+    --accent: #3987e5;
+    --accent-soft: rgba(57, 135, 229, 0.18);
+    --focus-ring: rgba(57, 135, 229, 0.5);
+    --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
+    --shadow-2: 0 12px 40px rgba(0, 0, 0, 0.6);
+  }
+}
+
+:root[data-theme='dark'] {
+  color-scheme: dark;
+
+  --plane: #0d0d0d;
+  --surface-1: #1a1a19;
+  --surface-2: #232322;
+  --surface-hover: #2c2c2a;
+  --ink-1: #ffffff;
+  --ink-2: #c3c2b7;
+  --ink-3: #898781;
+  --border: rgba(255, 255, 255, 0.1);
+  --border-strong: rgba(255, 255, 255, 0.2);
+
+  --grid: #2c2c2a;
+  --axis: #383835;
+
+  --series-1: #3987e5;
+  --series-2: #d95926;
+  --series-1-soft: rgba(57, 135, 229, 0.18);
+  --series-2-soft: rgba(217, 89, 38, 0.18);
+
+  --success-text: #0ca30c;
+
+  --accent: #3987e5;
+  --accent-soft: rgba(57, 135, 229, 0.18);
+  --focus-ring: rgba(57, 135, 229, 0.5);
+  --shadow-1: 0 1px 2px rgba(0, 0, 0, 0.5), 0 8px 24px rgba(0, 0, 0, 0.4);
+  --shadow-2: 0 12px 40px rgba(0, 0, 0, 0.6);
+}

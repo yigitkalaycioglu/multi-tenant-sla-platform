@@ -1,0 +1,1127 @@
+@import './tokens.css';
+
+/* --- Sifirlama --------------------------------------------------------- */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: var(--plane);
+  color: var(--ink-1);
+  font-family: var(--font);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1,
+h2,
+h3,
+h4,
+p,
+figure {
+  margin: 0;
+}
+
+button,
+input,
+select,
+textarea {
+  font: inherit;
+  color: inherit;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+a:hover {
+  text-decoration: underline;
+}
+
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: var(--radius-sm);
+}
+
+::selection {
+  background: var(--accent-soft);
+}
+
+/* --- Uygulama duzeni ---------------------------------------------------- */
+.shell {
+  display: grid;
+  grid-template-columns: 244px 1fr;
+  min-height: 100%;
+}
+
+.sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 18px 14px;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  height: 100vh;
+  overflow-y: auto;
+}
+
+.brand {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 4px 8px 18px;
+}
+
+.brand-mark {
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  border-radius: 9px;
+  background: var(--accent);
+  color: var(--accent-ink);
+  font-weight: 700;
+  font-size: 13px;
+  letter-spacing: 0.02em;
+  flex: none;
+}
+
+.brand-text {
+  min-width: 0;
+}
+.brand-name {
+  font-weight: 650;
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.brand-tenant {
+  font-size: 12px;
+  color: var(--ink-3);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.nav-section {
+  padding: 14px 8px 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.nav-link {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: var(--radius-sm);
+  color: var(--ink-2);
+  font-weight: 500;
+  transition: background 0.12s ease, color 0.12s ease;
+}
+.nav-link:hover {
+  background: var(--surface-hover);
+  color: var(--ink-1);
+  text-decoration: none;
+}
+.nav-link.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+}
+.nav-link svg {
+  flex: none;
+}
+.nav-badge {
+  margin-left: auto;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  padding: 1px 6px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.nav-badge[data-tone='critical'] {
+  background: color-mix(in srgb, var(--status-critical) 16%, var(--surface-1));
+  color: var(--status-critical);
+}
+
+.sidebar-footer {
+  margin-top: auto;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.user-chip {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 8px;
+}
+.avatar {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  font-size: 12px;
+  font-weight: 650;
+  flex: none;
+}
+.user-meta {
+  min-width: 0;
+}
+.user-name {
+  font-size: 13px;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.user-role {
+  font-size: 11px;
+  color: var(--ink-3);
+}
+
+.main {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+}
+
+.topbar {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 16px 28px;
+  border-bottom: 1px solid var(--border);
+  background: color-mix(in srgb, var(--plane) 88%, transparent);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.page-title {
+  font-size: 18px;
+  font-weight: 650;
+  letter-spacing: -0.015em;
+}
+.page-subtitle {
+  font-size: 12.5px;
+  color: var(--ink-3);
+}
+
+.topbar-actions {
+  margin-left: auto;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.content {
+  padding: 24px 28px 56px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  max-width: 1440px;
+  width: 100%;
+}
+
+/* --- Baglanti gostergesi ------------------------------------------------ */
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-3);
+  padding: 5px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+}
+.live-dot::before {
+  content: '';
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--ink-3);
+}
+.live-dot[data-live='true']::before {
+  background: var(--status-good);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--status-good) 22%, transparent);
+}
+
+/* --- Dugmeler ----------------------------------------------------------- */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
+  color: var(--ink-1);
+  font-size: 13px;
+  font-weight: 550;
+  cursor: pointer;
+  transition: background 0.12s ease, border-color 0.12s ease, opacity 0.12s ease;
+  white-space: nowrap;
+}
+.btn:hover:not(:disabled) {
+  background: var(--surface-hover);
+}
+.btn:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+.btn-primary {
+  background: var(--accent);
+  border-color: transparent;
+  color: var(--accent-ink);
+}
+.btn-primary:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--accent) 86%, #000);
+}
+.btn-ghost {
+  border-color: transparent;
+  background: transparent;
+  color: var(--ink-2);
+}
+.btn-ghost:hover:not(:disabled) {
+  background: var(--surface-hover);
+  color: var(--ink-1);
+}
+.btn-danger {
+  border-color: color-mix(in srgb, var(--status-critical) 40%, transparent);
+  color: var(--status-critical);
+  background: transparent;
+}
+.btn-danger:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--status-critical) 12%, transparent);
+}
+.btn-sm {
+  padding: 5px 10px;
+  font-size: 12px;
+}
+.btn-icon {
+  padding: 7px;
+  border-radius: var(--radius-sm);
+}
+
+/* --- Form alanlari ------------------------------------------------------ */
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.label {
+  font-size: 12.5px;
+  font-weight: 550;
+  color: var(--ink-2);
+}
+.hint {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.input,
+.select,
+.textarea {
+  width: 100%;
+  padding: 9px 11px;
+  border-radius: var(--radius-sm);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
+  color: var(--ink-1);
+  transition: border-color 0.12s ease, box-shadow 0.12s ease;
+}
+.input:focus,
+.select:focus,
+.textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+.textarea {
+  min-height: 92px;
+  resize: vertical;
+}
+.select {
+  cursor: pointer;
+}
+.field-error {
+  font-size: 12px;
+  color: var(--status-critical);
+}
+.checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: var(--ink-2);
+  cursor: pointer;
+}
+.checkbox input {
+  accent-color: var(--accent);
+  width: 15px;
+  height: 15px;
+}
+
+/* --- Kartlar ------------------------------------------------------------ */
+.card {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 18px;
+}
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  gap: 12px;
+  margin-bottom: 14px;
+}
+.card-title {
+  font-size: 14px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+.card-sub {
+  font-size: 12px;
+  color: var(--ink-3);
+  margin-top: 2px;
+}
+.card-actions {
+  margin-left: auto;
+  display: flex;
+  gap: 6px;
+  align-items: center;
+}
+
+.grid {
+  display: grid;
+  gap: 16px;
+}
+.grid-kpi {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+.grid-2 {
+  grid-template-columns: minmax(0, 1.55fr) minmax(0, 1fr);
+}
+@media (max-width: 1080px) {
+  .grid-2 {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- Istatistik karosu (hero rakam) ------------------------------------- */
+.stat {
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  padding: 16px 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.stat-label {
+  font-size: 12.5px;
+  color: var(--ink-2);
+  font-weight: 550;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+.stat-value {
+  font-size: 30px;
+  font-weight: 660;
+  letter-spacing: -0.025em;
+  line-height: 1.1;
+  /* Buyuk tekil rakamlarda orantili rakamlar kullanilir (tabular degil). */
+}
+.stat-foot {
+  font-size: 12px;
+  color: var(--ink-3);
+}
+.stat[data-tone='critical'] .stat-value {
+  color: var(--status-critical);
+}
+.stat[data-tone='warning'] .stat-value {
+  color: color-mix(in srgb, var(--status-warning) 78%, var(--ink-1));
+}
+.stat[data-tone='good'] .stat-value {
+  color: var(--success-text);
+}
+
+/* --- Rozetler ----------------------------------------------------------- */
+.pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.005em;
+  white-space: nowrap;
+  border: 1px solid transparent;
+}
+.pill svg {
+  flex: none;
+}
+.pill[data-tone='neutral'] {
+  background: var(--surface-2);
+  color: var(--ink-2);
+}
+.pill[data-tone='info'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.pill[data-tone='good'] {
+  background: color-mix(in srgb, var(--status-good) 14%, var(--surface-1));
+  color: var(--success-text);
+}
+.pill[data-tone='warning'] {
+  background: color-mix(in srgb, var(--status-warning) 20%, var(--surface-1));
+  color: color-mix(in srgb, var(--status-warning) 62%, var(--ink-1));
+}
+.pill[data-tone='serious'] {
+  background: color-mix(in srgb, var(--status-serious) 20%, var(--surface-1));
+  color: color-mix(in srgb, var(--status-serious) 65%, var(--ink-1));
+}
+.pill[data-tone='critical'] {
+  background: color-mix(in srgb, var(--status-critical) 14%, var(--surface-1));
+  color: var(--status-critical);
+}
+
+/* --- Tablolar ----------------------------------------------------------- */
+.table-wrap {
+  overflow-x: auto;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  background: var(--surface-1);
+}
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.table th {
+  text-align: left;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  white-space: nowrap;
+  background: var(--surface-1);
+}
+.table td {
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+  vertical-align: middle;
+}
+.table tbody tr:last-child td {
+  border-bottom: none;
+}
+.table tbody tr {
+  transition: background 0.1s ease;
+}
+.table tbody tr:hover {
+  background: var(--surface-hover);
+}
+.table .num {
+  font-variant-numeric: tabular-nums;
+  text-align: right;
+}
+.row-link {
+  color: var(--ink-1);
+  font-weight: 550;
+}
+.mono-ref {
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--ink-3);
+}
+
+.empty {
+  padding: 44px 20px;
+  text-align: center;
+  color: var(--ink-3);
+}
+.empty-title {
+  color: var(--ink-2);
+  font-weight: 600;
+  margin-bottom: 4px;
+}
+
+/* --- Filtre satiri (tum grafiklerin/tablonun ustunde tek satir) ---------- */
+.filter-bar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 14px;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+}
+.filter-bar .input,
+.filter-bar .select {
+  width: auto;
+  min-width: 140px;
+  padding: 7px 10px;
+  font-size: 13px;
+}
+.filter-bar .search {
+  min-width: 230px;
+  flex: 1 1 230px;
+}
+.filter-spacer {
+  margin-left: auto;
+}
+
+/* --- Grafikler ---------------------------------------------------------- */
+.chart-figure {
+  display: block;
+  margin: 0;
+}
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  overflow: visible;
+}
+.chart-legend {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 14px;
+  margin-bottom: 10px;
+}
+.legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 12px;
+  color: var(--ink-2);
+}
+.legend-swatch {
+  width: 10px;
+  height: 10px;
+  border-radius: 3px;
+  flex: none;
+}
+.chart-tick {
+  font-size: 11px;
+  fill: var(--ink-3);
+  font-variant-numeric: tabular-nums;
+}
+.chart-label {
+  font-size: 12px;
+  fill: var(--ink-2);
+}
+.chart-value {
+  font-size: 12px;
+  fill: var(--ink-1);
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+}
+.chart-grid-line {
+  stroke: var(--grid);
+  stroke-width: 1;
+}
+.chart-axis-line {
+  stroke: var(--axis);
+  stroke-width: 1;
+}
+
+.chart-tooltip {
+  position: absolute;
+  pointer-events: none;
+  z-index: 30;
+  background: var(--surface-1);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-sm);
+  box-shadow: var(--shadow-1);
+  padding: 8px 10px;
+  font-size: 12px;
+  min-width: 130px;
+  transform: translate(-50%, calc(-100% - 10px));
+}
+.tooltip-title {
+  font-weight: 650;
+  margin-bottom: 4px;
+  color: var(--ink-1);
+}
+.tooltip-row {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  color: var(--ink-2);
+}
+.tooltip-row .num {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+  color: var(--ink-1);
+}
+.chart-host {
+  position: relative;
+}
+
+/* SLA olcegi (durum segmentleri) */
+.meter {
+  display: flex;
+  gap: 2px; /* 2px yuzey bosluu — cizgi/kenarlik yerine */
+  height: 10px;
+  margin: 4px 0 12px;
+}
+.meter-seg {
+  border-radius: 3px;
+  min-width: 3px;
+}
+.meter-legend {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.meter-row {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-size: 13px;
+}
+.meter-row .num {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-weight: 600;
+}
+
+/* --- SLA ilerleme cubugu (bilet satirlarinda) --------------------------- */
+.sla-bar {
+  width: 100%;
+  max-width: 120px;
+  height: 5px;
+  border-radius: 3px;
+  background: var(--surface-2);
+  overflow: hidden;
+}
+.sla-bar-fill {
+  height: 100%;
+  border-radius: 3px;
+}
+
+/* --- Zaman tuneli ------------------------------------------------------- */
+.timeline {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.tl-item {
+  display: grid;
+  grid-template-columns: 26px 1fr;
+  gap: 12px;
+  padding-bottom: 14px;
+  position: relative;
+}
+.tl-item:not(:last-child)::before {
+  content: '';
+  position: absolute;
+  left: 13px;
+  top: 26px;
+  bottom: 0;
+  width: 1px;
+  background: var(--border);
+}
+.tl-dot {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background: var(--surface-2);
+  color: var(--ink-2);
+  z-index: 1;
+}
+.tl-dot[data-tone='critical'] {
+  background: color-mix(in srgb, var(--status-critical) 16%, var(--surface-1));
+  color: var(--status-critical);
+}
+.tl-dot[data-tone='warning'] {
+  background: color-mix(in srgb, var(--status-warning) 22%, var(--surface-1));
+  color: color-mix(in srgb, var(--status-warning) 62%, var(--ink-1));
+}
+.tl-dot[data-tone='good'] {
+  background: color-mix(in srgb, var(--status-good) 16%, var(--surface-1));
+  color: var(--success-text);
+}
+.tl-body {
+  min-width: 0;
+}
+.tl-text {
+  font-size: 13px;
+}
+.tl-meta {
+  font-size: 11.5px;
+  color: var(--ink-3);
+  margin-top: 1px;
+}
+
+.comment {
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  background: var(--surface-1);
+}
+.comment[data-internal='true'] {
+  border-color: color-mix(in srgb, var(--status-warning) 40%, var(--border));
+  background: color-mix(in srgb, var(--status-warning) 6%, var(--surface-1));
+}
+.comment-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 6px;
+  font-size: 12.5px;
+}
+.comment-author {
+  font-weight: 600;
+}
+.comment-time {
+  color: var(--ink-3);
+  font-size: 11.5px;
+}
+.comment-body {
+  font-size: 13.5px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* --- Modal -------------------------------------------------------------- */
+.modal-backdrop {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  z-index: 60;
+}
+.modal {
+  width: min(560px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--surface-1);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-2);
+  padding: 20px;
+}
+.modal-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+}
+.modal-title {
+  font-size: 16px;
+  font-weight: 650;
+}
+.modal-body {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.modal-foot {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 20px;
+}
+
+/* --- Bildirimler -------------------------------------------------------- */
+.toast-stack {
+  position: fixed;
+  right: 20px;
+  bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  z-index: 80;
+  max-width: 360px;
+}
+.toast {
+  display: flex;
+  gap: 10px;
+  padding: 12px 14px;
+  border-radius: var(--radius);
+  border: 1px solid var(--border-strong);
+  background: var(--surface-1);
+  box-shadow: var(--shadow-1);
+  animation: toast-in 0.18s ease-out;
+}
+.toast[data-tone='critical'] {
+  border-left: 3px solid var(--status-critical);
+}
+.toast[data-tone='warning'] {
+  border-left: 3px solid var(--status-warning);
+}
+.toast[data-tone='good'] {
+  border-left: 3px solid var(--status-good);
+}
+.toast[data-tone='info'] {
+  border-left: 3px solid var(--accent);
+}
+.toast-title {
+  font-size: 13px;
+  font-weight: 650;
+}
+.toast-text {
+  font-size: 12.5px;
+  color: var(--ink-2);
+}
+@keyframes toast-in {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+}
+
+/* --- Kimlik dogrulama ekranlari ----------------------------------------- */
+.auth-page {
+  min-height: 100%;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+}
+@media (max-width: 900px) {
+  .auth-page {
+    grid-template-columns: 1fr;
+  }
+  .auth-aside {
+    display: none;
+  }
+}
+.auth-aside {
+  padding: 48px;
+  background: var(--surface-1);
+  border-right: 1px solid var(--border);
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 22px;
+}
+.auth-headline {
+  font-size: 28px;
+  font-weight: 680;
+  letter-spacing: -0.03em;
+  line-height: 1.2;
+  max-width: 15ch;
+}
+.auth-lead {
+  color: var(--ink-2);
+  max-width: 46ch;
+}
+.auth-points {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-top: 6px;
+}
+.auth-point {
+  display: flex;
+  gap: 10px;
+  align-items: flex-start;
+  font-size: 13px;
+  color: var(--ink-2);
+  max-width: 44ch;
+}
+.auth-point svg {
+  flex: none;
+  margin-top: 2px;
+  color: var(--accent);
+}
+.auth-main {
+  display: grid;
+  place-items: center;
+  padding: 40px 24px;
+}
+.auth-card {
+  width: min(400px, 100%);
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+.auth-title {
+  font-size: 21px;
+  font-weight: 660;
+  letter-spacing: -0.02em;
+}
+.auth-sub {
+  color: var(--ink-3);
+  font-size: 13px;
+  margin-top: 3px;
+}
+.demo-box {
+  border: 1px dashed var(--border-strong);
+  border-radius: var(--radius);
+  padding: 12px 14px;
+  font-size: 12.5px;
+  color: var(--ink-2);
+  background: var(--surface-1);
+}
+.demo-box code {
+  font-size: 12px;
+  background: var(--surface-2);
+  padding: 1px 5px;
+  border-radius: 4px;
+}
+.demo-row {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.alert {
+  padding: 10px 12px;
+  border-radius: var(--radius-sm);
+  font-size: 13px;
+  display: flex;
+  gap: 9px;
+  align-items: flex-start;
+}
+.alert[data-tone='critical'] {
+  background: color-mix(in srgb, var(--status-critical) 12%, var(--surface-1));
+  color: var(--status-critical);
+}
+.alert[data-tone='info'] {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.alert svg {
+  flex: none;
+  margin-top: 1px;
+}
+
+/* --- Yardimcilar -------------------------------------------------------- */
+.row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.col {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.wrap {
+  flex-wrap: wrap;
+}
+.muted {
+  color: var(--ink-3);
+}
+.dim {
+  color: var(--ink-2);
+}
+.small {
+  font-size: 12px;
+}
+.strong {
+  font-weight: 600;
+}
+.right {
+  margin-left: auto;
+}
+.nums {
+  font-variant-numeric: tabular-nums;
+}
+.stack {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+.stack-sm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.truncate {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.skeleton {
+  background: linear-gradient(90deg, var(--surface-2), var(--surface-hover), var(--surface-2));
+  background-size: 200% 100%;
+  animation: shimmer 1.2s infinite linear;
+  border-radius: var(--radius-sm);
+}
+@keyframes shimmer {
+  to {
+    background-position: -200% 0;
+  }
+}
+/* Yeniden veri cekerken iskelet parlamasi yerine onceki icerik solar. */
+.refetching {
+  opacity: 0.55;
+  transition: opacity 0.15s ease;
+}
+
+.pager {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 4px 0;
+  font-size: 13px;
+  color: var(--ink-2);
+}
+
+@media (max-width: 860px) {
+  .shell {
+    grid-template-columns: 1fr;
+  }
+  .sidebar {
+    position: static;
+    height: auto;
+    flex-direction: row;
+    align-items: center;
+    overflow-x: auto;
+    border-right: none;
+    border-bottom: 1px solid var(--border);
+  }
+  .sidebar .nav-section,
+  .sidebar-footer {
+    display: none;
+  }
+  .content,
+  .topbar {
+    padding-left: 16px;
+    padding-right: 16px;
+  }
+}
