@@ -80,7 +80,7 @@ Access token 15 dakikalık ve tarayıcıda sadece bellekte tutuluyor. Refresh to
 
 ## Docker olmadan çalıştırma
 
-PostgreSQL 16 ve Redis 7 çalışıyor olmalı. `.env` dosyası kök dizinde duruyor, `DATABASE_ADMIN_URL` ve `REDIS_URL` değerlerini kendi kurulumunuza göre düzenleyin.
+Node.js 22.12 veya üzeri gerekiyor, PostgreSQL 16 ve Redis 7 de çalışıyor olmalı. `.env` dosyası kök dizinde duruyor, `DATABASE_ADMIN_URL` ve `REDIS_URL` değerlerini kendi kurulumunuza göre düzenleyin.
 
 ```bash
 cp .env.example .env
