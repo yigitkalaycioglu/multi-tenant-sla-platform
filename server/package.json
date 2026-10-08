@@ -16,6 +16,7 @@
     "seed": "tsx src/db/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:db": "vitest run tests/integration",
     "migrate:prod": "node dist/db/migrate.js",
     "seed:prod": "node dist/db/seed.js"
   },
