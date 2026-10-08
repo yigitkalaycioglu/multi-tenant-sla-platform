@@ -103,12 +103,21 @@ Vite geliştirme sunucusu `/api` ve `/socket.io` isteklerini 4000 portuna yönle
 
 ```bash
 cd server
-npm test             # SLA motoru ve bilet durum geçişleri
+npm test             # birim testleri
 npm run typecheck
+
+# PostgreSQL gerekir, önce npm run migrate
+RUN_DB_TESTS=1 npm run test:db
 
 cd ../web
 npm run build        # tsc + vite build
 ```
+
+Birim testleri SLA motorunu, bilet durum geçişlerini, token üretimi ve doğrulamasını, rol izinlerini, bilet görünürlük kapsamını ve istek doğrulamasını kapsıyor. Veritabanına ya da Redis'e bağlanmıyorlar.
+
+`tests/integration` altındaki testler gerçek bir PostgreSQL'e `app_user` rolüyle bağlanıp başka bir kiracının biletini okumayı, güncellemeyi ve onun adına kayıt eklemeyi deniyor. Üçünün de veritabanı tarafından engellendiğini ve kiracı ayarının transaction bitince bağlantıda kalmadığını doğruluyor.
+
+GitHub Actions her push'ta tip kontrolünü, birim testlerini, web derlemesini ve bir Postgres servisi açıp bu entegrasyon testlerini çalıştırıyor.
 
 ## Klasör yapısı
 
@@ -134,7 +143,7 @@ docker-compose.yml
 ## Eksikler
 
 - SLA saati 7/24 işliyor, mesai saatleri ve tatil günleri hesaba katılmıyor.
-- Testler SLA motorunu ve durum geçişlerini kapsıyor. RLS ve API uçları için entegrasyon testi henüz yok.
+- Entegrasyon testleri RLS izolasyonunu kapsıyor, API uçları için uçtan uca test henüz yok.
 - Biletlere dosya eklenemiyor.
 - E-posta şablonları sadece Türkçe.
 - `.env.example` içindeki JWT anahtarları geliştirme için. Gerçek ortamda `openssl rand -hex 48` gibi bir komutla yenileri üretilmeli.
