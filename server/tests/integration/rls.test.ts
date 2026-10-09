@@ -1,11 +1,30 @@
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { adminPool, closePools, pool, withTenant } from '../../src/db/pool.js';
+import type { Logger } from '../../src/application/ports/runtime.js';
+import { createPool, withTenant } from '../../src/infrastructure/db/pool.js';
+import { createTenantTransactions } from '../../src/infrastructure/db/tenant-transactions.js';
 
 // Bu testler gercek bir PostgreSQL ister. CI'da Postgres servisiyle calisir;
 // yerelde `npm run migrate` sonrasi RUN_DB_TESTS=1 ile `npm run test:db`.
 const enabled = process.env.RUN_DB_TESTS === '1';
 
+const silentLog: Logger = {
+  debug: () => undefined,
+  info: () => undefined,
+  warn: () => undefined,
+  error: () => undefined,
+  child: () => silentLog,
+};
+
 describe.skipIf(!enabled)('kiraci izolasyonu (PostgreSQL RLS)', () => {
+  const pool = createPool(
+    { connectionString: process.env.DATABASE_URL!, max: 2, applicationName: 'rls-test' },
+    silentLog,
+  );
+  const adminPool = createPool(
+    { connectionString: process.env.DATABASE_ADMIN_URL!, max: 2, applicationName: 'rls-test-admin' },
+    silentLog,
+  );
+
   const slugs = ['rls-test-a', 'rls-test-b'];
   let tenantA = '';
   let tenantB = '';
@@ -32,7 +51,7 @@ describe.skipIf(!enabled)('kiraci izolasyonu (PostgreSQL RLS)', () => {
 
   afterAll(async () => {
     await adminPool.query('DELETE FROM tenants WHERE slug = ANY($1)', [slugs]);
-    await closePools();
+    await Promise.allSettled([pool.end(), adminPool.end()]);
   });
 
   it('uygulama rolu RLS i asamaz', async () => {
@@ -43,7 +62,7 @@ describe.skipIf(!enabled)('kiraci izolasyonu (PostgreSQL RLS)', () => {
   });
 
   it('kiraci sadece kendi biletlerini gorur', async () => {
-    const titles = await withTenant(tenantA, async (db) => {
+    const titles = await withTenant(pool, tenantA, async (db) => {
       const { rows } = await db.query<{ title: string }>('SELECT title FROM tickets');
       return rows.map((r) => r.title);
     });
@@ -51,15 +70,23 @@ describe.skipIf(!enabled)('kiraci izolasyonu (PostgreSQL RLS)', () => {
   });
 
   it('baska kiracinin biletine id ile de ulasilamaz', async () => {
-    const found = await withTenant(tenantA, async (db) => {
+    const found = await withTenant(pool, tenantA, async (db) => {
       const { rowCount } = await db.query('SELECT 1 FROM tickets WHERE id = $1', [ticketB]);
       return rowCount;
     });
     expect(found).toBe(0);
   });
 
+  it('depo katmani da gorunurluk kapsami ne olursa olsun baska kiracinin biletini bulamaz', async () => {
+    // Yonetici kapsami ("tum biletler") bile kiraci sinirini asamaz: sinir RLS'te.
+    const record = await createTenantTransactions(pool).run(tenantA, ({ tickets }) =>
+      tickets.findRecord(ticketB, { scope: 'tenant' }),
+    );
+    expect(record).toBeNull();
+  });
+
   it('baska kiracinin biletini guncelleyemez', async () => {
-    const updated = await withTenant(tenantA, async (db) => {
+    const updated = await withTenant(pool, tenantA, async (db) => {
       const { rowCount } = await db.query(`UPDATE tickets SET title = 'degisti' WHERE id = $1`, [ticketB]);
       return rowCount;
     });
@@ -71,7 +98,7 @@ describe.skipIf(!enabled)('kiraci izolasyonu (PostgreSQL RLS)', () => {
 
   it('baska kiraci adina kayit ekleyemez', async () => {
     await expect(
-      withTenant(tenantA, (db) =>
+      withTenant(pool, tenantA, (db) =>
         db.query(`INSERT INTO tickets (tenant_id, reference, title) VALUES ($1, 'TCK-999999', 'sizma denemesi')`, [
           tenantB,
         ]),

@@ -7,18 +7,18 @@
     "node": ">=22.12"
   },
   "scripts": {
-    "dev": "tsx watch src/index.ts",
-    "dev:worker": "tsx watch src/queue/worker.ts",
+    "dev": "tsx watch src/main/api.ts",
+    "dev:worker": "tsx watch src/main/worker.ts",
     "build": "tsc -p tsconfig.build.json",
-    "start": "node dist/index.js",
-    "start:worker": "node dist/queue/worker.js",
-    "migrate": "tsx src/db/migrate.ts",
-    "seed": "tsx src/db/seed.ts",
+    "start": "node dist/main/api.js",
+    "start:worker": "node dist/main/worker.js",
+    "migrate": "tsx src/infrastructure/db/migrate.ts",
+    "seed": "tsx src/infrastructure/db/seed.ts",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:db": "vitest run tests/integration",
-    "migrate:prod": "node dist/db/migrate.js",
-    "seed:prod": "node dist/db/seed.js"
+    "migrate:prod": "node dist/infrastructure/db/migrate.js",
+    "seed:prod": "node dist/infrastructure/db/seed.js"
   },
   "dependencies": {
     "bcryptjs": "^3.0.2",
