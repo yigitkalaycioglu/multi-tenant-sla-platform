@@ -31,6 +31,12 @@ export function changeStatus(ticket: Ticket, next: TicketStatus, now: Date): Tic
 
   const changes: TicketChanges = { status: next };
 
+  // Muhurleme, beklemeden cikista kaydirilan GUNCEL hedeflerle yapilmali;
+  // aksi halde beklemeden dogrudan cozulen bilet, beklenen sure yuzunden
+  // haksiz yere "breached" sayilir.
+  let responseDueAt = ticket.responseDueAt;
+  let resolutionDueAt = ticket.resolutionDueAt;
+
   // Beklemeden cikis
   if (ticket.pausedAt && next !== 'on_hold') {
     const resumed = resumeFromHold({
@@ -45,6 +51,8 @@ export function changeStatus(ticket: Ticket, next: TicketStatus, now: Date): Tic
     changes.pausedTotalSeconds = resumed.pausedTotalSeconds;
     changes.responseDueAt = resumed.responseDueAt;
     changes.resolutionDueAt = resumed.resolutionDueAt;
+    responseDueAt = resumed.responseDueAt;
+    resolutionDueAt = resumed.resolutionDueAt;
   }
 
   if (next === 'on_hold') {
@@ -56,12 +64,12 @@ export function changeStatus(ticket: Ticket, next: TicketStatus, now: Date): Tic
     if (next === 'closed') changes.closedAt = now;
 
     // Cozum an itibariyle muhurlenir.
-    changes.resolutionSlaState = sealedState(ticket.resolutionDueAt, now);
+    changes.resolutionSlaState = sealedState(resolutionDueAt, now);
 
     // Cozum, ayni zamanda ilk yanit sayilir.
     if (!ticket.firstResponseAt) {
       changes.firstResponseAt = now;
-      changes.responseSlaState = sealedState(ticket.responseDueAt, now);
+      changes.responseSlaState = sealedState(responseDueAt, now);
     }
   }
 

@@ -76,6 +76,24 @@ describe('durum gecisi', () => {
     expect(changes).not.toHaveProperty('firstResponseAt');
   });
 
+  it('beklemeden dogrudan cozulen bilet kaydirilmis hedefe gore muhurlenir', () => {
+    // 400. dakikada beklemeye alindi, 200 dk bekledi, 600. dakikada cozuldu.
+    // Aktif sure 400 dk < 480 dk hedef: zamaninda. Kaydirilmis hedef = 680. dakika.
+    const changes = changeStatus(ticket({ status: 'on_hold', pausedAt: at(400) }), 'resolved', at(600));
+
+    expect(changes.resolutionDueAt).toEqual(at(680));
+    expect(changes.resolutionSlaState).toBe('met');
+  });
+
+  it('beklemeden dogrudan kapatilan bilette ilk yanit da kaydirilmis hedefe gore muhurlenir', () => {
+    // 30. dakikada beklemeye alindi, 60 dk bekledi, 90. dakikada kapatildi.
+    // Yanit icin aktif sure 30 dk < 60 dk hedef: zamaninda. Kaydirilmis hedef = 120. dakika.
+    const changes = changeStatus(ticket({ status: 'on_hold', pausedAt: at(30) }), 'closed', at(90));
+
+    expect(changes.firstResponseAt).toEqual(at(90));
+    expect(changes.responseSlaState).toBe('met');
+  });
+
   it('yeniden acilan biletin cozum alanlari ve bildirim isaretleri temizlenir', () => {
     const changes = changeStatus(
       ticket({ status: 'closed', resolvedAt: at(100), closedAt: at(110), breachNotifiedAt: at(90) }),
