@@ -54,15 +54,36 @@ Kiracı izolasyonunu denemek için `kuzey` ile girip bir bilet numarası alın, 
 
 ## Teknik notlar
 
+### Katmanlı mimari (Clean Architecture)
+
+Sunucu dört katmana ve bunları birbirine bağlayan bir composition root'a ayrılıyor. Bağımlılıklar yalnızca içe doğru akıyor:
+
+```
+main ──▶ interfaces      (Express, Socket.io)          ─┐
+     └─▶ infrastructure  (Postgres, Redis, BullMQ, JWT) ─┴─▶ application ──▶ domain
+```
+
+- **domain**: İş kuralları, saf TypeScript. SLA motoru, bilet durum geçişleri, beklemeye alma ve öncelik değişiminin SLA'ya etkisi (`ticket-lifecycle.ts`), rol/izin matrisi ve "kim hangi bileti görebilir" kuralı burada. Express, `pg` ya da ortam değişkeni bilmiyor. Hatalar HTTP durum kodu değil tür (`invalid`, `forbidden`, `not_found`…) taşıyor.
+- **application**: Use case'ler ve onların ihtiyaç duyduğu portlar (arayüzler): repository'ler, `TenantTransactions` (unit of work), `TokenService`, `PasswordHasher`, `RealtimePublisher`, `NotificationQueue`, `Clock`. Kaba izin kontrolü (`assertPermission`) de use case'in ilk satırında, böylece kural HTTP dışından çağrıldığında da geçerli.
+- **infrastructure**: Portların somut uygulamaları. SQL yalnızca burada yazılıyor. Postgres hata kodları (`23505`, `42501`…) da burada domain hatalarına çevriliyor.
+- **interfaces**: HTTP ve Socket.io. Rotalar isteği zod ile doğrulayıp ilgili use case'i çağırıyor, domain hatasını HTTP yanıtına çevirmek de `error-handler.ts`'in işi.
+- **main**: Composition root. Somut adaptörlerin oluşturulup use case'lere bağlandığı tek yer (`container.ts`), ayrıca API ve worker giriş noktaları.
+
+Bir bilet güncellemesi şöyle akıyor: `PATCH /api/tickets/:id` → `ticket.routes.ts` gövdeyi doğruluyor → `updateTicket` use case'i `TenantTransactions.run` içinde bileti kilitleyip okuyor → değişiklikleri `changeStatus` / `changePriority` domain fonksiyonları hesaplıyor → repository tek `UPDATE` ile yazıyor → commit'ten **sonra** canlı olay yayınlanıyor ve gerekirse atama e-postası kuyruğa giriyor. İşlem geri alınırsa bildirim gitmiyor.
+
+Kural sadece belgede kalmasın diye `tests/architecture.test.ts` her kaynak dosyanın import'larını okuyor. Örneğin domain'den `pg` ya da bir rotadan repository import edilirse CI kırılıyor.
+
+Bu ayrımın somut getirisi test edilebilirlik. Bilet yaşam döngüsü artık veritabanı olmadan saniye hassasiyetinde test ediliyor. Use case'ler de bellek içi sahte portlarla, "yan etkiler yalnızca commit'ten sonra" kuralı dahil test ediliyor (`tests/application`).
+
 ### Kiracı izolasyonu
 
-Sorgulardaki `tenant_id` filtresine ek olarak PostgreSQL Row Level Security açık. API veritabanına `NOBYPASSRLS` olan, düşük yetkili `app_user` rolüyle bağlanıyor. Her istek bir transaction içinde çalışıyor ve başta kiracı kimliği `set_config('app.tenant_id', ..., true)` ile ayarlanıyor (`server/src/db/pool.ts`, `withTenant`). Bu sayede bir sorguda `WHERE` unutulsa bile başka kiracının satırı dönmüyor. Kiracı kimliği istek gövdesinden değil, imzalı JWT'den okunuyor.
+Sorgulardaki `tenant_id` filtresine ek olarak PostgreSQL Row Level Security açık. API veritabanına `NOBYPASSRLS` olan, düşük yetkili `app_user` rolüyle bağlanıyor. Her istek bir transaction içinde çalışıyor ve başta kiracı kimliği `set_config('app.tenant_id', ..., true)` ile ayarlanıyor (`server/src/infrastructure/db/pool.ts`, `withTenant`; use case'lere `TenantTransactions` portu olarak sunuluyor). Bu sayede bir sorguda `WHERE` unutulsa bile başka kiracının satırı dönmüyor. Kiracı kimliği istek gövdesinden değil, imzalı JWT'den okunuyor.
 
-Worker ise SLA taraması bütün kiracıları kapsadığı için yönetici bağlantısını kullanıyor. Bu bağlantı HTTP tarafında hiç kullanılmıyor.
+Worker ise SLA taraması bütün kiracıları kapsadığı için yönetici bağlantısını kullanıyor. API süreci bu bağlantı havuzunu hiç oluşturmuyor (`server/src/main/container.ts`).
 
 ### SLA hesabı
 
-`server/src/modules/sla/sla.engine.ts` saf fonksiyonlardan oluşuyor ve şu anki zaman dışarıdan parametre olarak geliyor. Eşiğe gelme, ihlal ve arka arkaya beklemeye alma gibi durumlar bu sayede veritabanı olmadan test edilebiliyor.
+`server/src/domain/sla/sla-engine.ts` saf fonksiyonlardan oluşuyor ve şu anki zaman dışarıdan parametre olarak geliyor. Eşiğe gelme, ihlal ve arka arkaya beklemeye alma gibi durumlar bu sayede veritabanı olmadan test edilebiliyor.
 
 Bilet beklemeye alındığında geçen süre `paused_total_seconds` alanına ekleniyor ve hedef tarihler o kadar ileri kaydırılıyor. Hedef tarih her zaman gerçek son tarih olduğu için tarayıcı sorgusu basit kalıyor ve kapalı biletleri içermeyen kısmi bir indeksi kullanabiliyor.
 
@@ -113,7 +134,13 @@ cd ../web
 npm run build        # tsc + vite build
 ```
 
-Birim testleri SLA motorunu, bilet durum geçişlerini, token üretimi ve doğrulamasını, rol izinlerini, bilet görünürlük kapsamını ve istek doğrulamasını kapsıyor. Veritabanına ya da Redis'e bağlanmıyorlar.
+Testler katmanlara göre ayrılıyor ve hiçbiri veritabanına ya da Redis'e bağlanmıyor:
+
+- `tests/domain`: SLA motoru, durum geçişleri, bilet yaşam döngüsü (beklemeye alma, çözümde mühürleme, öncelik değişimi, ilk yanıt), izin matrisi ve görünürlük kuralı
+- `tests/application`: bilet use case'leri, bellek içi sahte portlarla
+- `tests/infrastructure`: JWT/refresh token servisi, Postgres hata çevirisi, görünürlük kuralının SQL karşılığı
+- `tests/interfaces`: istek doğrulama ve domain hatalarının HTTP yanıtına eşlenmesi
+- `tests/architecture.test.ts`: katmanlar arası bağımlılık kuralı
 
 `tests/integration` altındaki testler gerçek bir PostgreSQL'e `app_user` rolüyle bağlanıp başka bir kiracının biletini okumayı, güncellemeyi ve onun adına kayıt eklemeyi deniyor. Üçünün de veritabanı tarafından engellendiğini ve kiracı ayarının transaction bitince bağlantıda kalmadığını doğruluyor.
 
@@ -124,13 +151,20 @@ GitHub Actions her push'ta tip kontrolünü, birim testlerini, web derlemesini v
 ```
 server/
   src/
-    config/       ortam değişkenleri (zod ile doğrulanıyor)
-    db/           bağlantı havuzu, migration, seed
-    middleware/   auth, rbac, hız sınırı, hata yakalama
-    modules/      auth, tickets, sla, teams, users, reports
-    queue/        BullMQ kuyrukları ve worker
-    realtime/     Socket.io ve Redis pub/sub
-  tests/
+    domain/           iş kuralları: SLA motoru, bilet yaşam döngüsü, roller ve izinler
+    application/      use case'ler ve portlar (auth, tickets, teams, users, sla, reports, notifications)
+    infrastructure/
+      db/             havuz, RLS'li unit of work, repository'ler, migration, seed
+      redis/          bağlantı, olay yolu (pub/sub), hız sınırı sayacı
+      queue/          BullMQ kuyrukları ve tüketicileri
+      security/       JWT ve bcrypt
+      mail/           SMTP
+      config/         ortam değişkenleri (zod ile doğrulanıyor)
+    interfaces/
+      http/           Express uygulaması, rotalar, middleware, hata eşlemesi
+      realtime/       Socket.io sunucusu
+    main/             composition root, API ve worker giriş noktaları
+  tests/              domain, application, infrastructure, interfaces, integration
 web/
   src/
     api/          fetch istemcisi ve React Query hook'ları

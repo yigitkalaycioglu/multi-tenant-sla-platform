@@ -25,7 +25,7 @@ RUN npm ci --omit=dev && npm cache clean --force
 
 COPY --from=build /app/dist ./dist
 # .sql dosyalari tsc tarafindan kopyalanmaz; migrate.js bunlari yaninda arar.
-COPY src/db/migrations ./dist/db/migrations
+COPY src/infrastructure/db/migrations ./dist/infrastructure/db/migrations
 
 USER node
 EXPOSE 4000
@@ -34,4 +34,4 @@ HEALTHCHECK --interval=20s --timeout=4s --start-period=20s --retries=5   CMD wge
 
 # tini: PID 1 olarak sinyalleri dogru iletir (zarif kapanma)
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/main/api.js"]

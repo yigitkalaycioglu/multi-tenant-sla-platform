@@ -93,7 +93,7 @@ services:
     command:
       - sh
       - -c
-      - 'node dist/db/migrate.js && if [ "$$SEED_DEMO" = "true" ]; then node dist/db/seed.js; fi'
+      - 'node dist/infrastructure/db/migrate.js && if [ "$$SEED_DEMO" = "true" ]; then node dist/infrastructure/db/seed.js; fi'
     restart: 'no'
 
   api:
@@ -125,7 +125,7 @@ services:
         condition: service_healthy
       migrate:
         condition: service_completed_successfully
-    command: ['node', 'dist/queue/worker.js']
+    command: ['node', 'dist/main/worker.js']
 
   web:
     build:
