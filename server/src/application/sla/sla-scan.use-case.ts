@@ -63,7 +63,10 @@ export function makeRunSlaScan({ scanner, realtime, notifications, clock, log, r
           dueAt: hit.dueAt.toISOString(),
           recipients: hit.emailRecipients,
         },
-        `${transition}:${window}:${hit.ticketId}`,
+        // Hedef tarihi anahtara dahildir: oncelik degisimi ya da yeniden acma
+        // sonrasi yeni bir hedefin ihlali, ilk bildirimle ayni anahtari alip
+        // kuyrukta sessizce dusurulmez; ayni gecisin tekrari ise yine tekildir.
+        `${transition}:${window}:${hit.ticketId}:${hit.dueAt.getTime()}`,
       );
     }
 
