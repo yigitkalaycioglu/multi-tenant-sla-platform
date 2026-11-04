@@ -58,13 +58,28 @@ async function readError(res: Response): Promise<ApiError> {
   return new ApiError(res.status, body, `Istek basarisiz (${res.status})`);
 }
 
-/** Tek ucusta bir refresh: paralel 401'ler ayni promise'i bekler. */
+async function requestRefresh(): Promise<Session | null> {
+  const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
+  if (!res.ok) return null;
+  return (await res.json()) as Session;
+}
+
+/**
+ * Tek ucusta bir refresh: paralel 401'ler ayni promise'i bekler.
+ *
+ * Sekmeler ayni cerezi paylasir. Iki sekme ayni anda ayni refresh token'i
+ * gonderirse sunucu ikincisini calinmis token sayar ve kullanicinin TUM
+ * oturumlarini kapatir. Web Locks, yenilemeyi sekmeler arasinda siraya koyar:
+ * kilidi ikinci alan sekme, ilkinin dondurdugu yeni cerezi gonderir.
+ */
 async function refreshAccessToken(): Promise<Session | null> {
   refreshPromise ??= (async () => {
     try {
-      const res = await fetch('/api/auth/refresh', { method: 'POST', credentials: 'include' });
-      if (!res.ok) return null;
-      const data = (await res.json()) as Session;
+      const data =
+        'locks' in navigator
+          ? await navigator.locks.request('sla-platform-refresh', requestRefresh)
+          : await requestRefresh();
+      if (!data) return null;
       accessToken = data.accessToken;
       return data;
     } catch {

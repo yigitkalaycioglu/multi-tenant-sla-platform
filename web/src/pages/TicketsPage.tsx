@@ -20,12 +20,19 @@ export function TicketsPage(): React.JSX.Element {
   const [search, setSearch] = useState(params.get('search') ?? '');
 
   // Arama kutusu icin gecikmeli (debounce) URL guncellemesi.
+  //
+  // `setParams` her URL degisiminde yeni bir kimlik alir; bu yuzden efekt sayfa
+  // degistiginde de yeniden calisir. Sayfa numarasi yalnizca arama metni
+  // GERCEKTEN degistiginde sifirlanir, aksi halde 2. sayfaya gecen kullanici
+  // 300 ms sonra 1. sayfaya geri atilirdi.
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      const term = search.trim();
       setParams(
         (current) => {
+          if ((current.get('search') ?? '') === term) return current;
           const next = new URLSearchParams(current);
-          if (search) next.set('search', search);
+          if (term) next.set('search', term);
           else next.delete('search');
           next.delete('page');
           return next;
@@ -284,7 +291,8 @@ function NewTicketModal({ onClose }: { onClose: () => void }): React.JSX.Element
   const [teamId, setTeamId] = useState(user?.teamId ?? '');
   const [assigneeId, setAssigneeId] = useState('');
 
-  const canAssign = is('admin', 'team_lead');
+  // Sunucu kurali: ekip lideri yalnizca kendi ekibine acilan bilette atama yapar.
+  const canAssign = is('admin') || (is('team_lead') && teamId !== '' && teamId === user?.teamId);
 
   const submit = (event: FormEvent): void => {
     event.preventDefault();
