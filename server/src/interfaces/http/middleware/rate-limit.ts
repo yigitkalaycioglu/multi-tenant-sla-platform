@@ -17,6 +17,19 @@ export interface RateLimitOptions {
 }
 
 /**
+ * Giris/kayit denemelerinin anahtari: IP + kiraci + e-posta.
+ *
+ * Deger, dogrulama semalarinin yaptigi gibi normalize edilir (trim + kucuk
+ * harf). Aksi halde ayni hesap icin "Mert@Kuzey.io", " mert@kuzey.io" gibi
+ * varyasyonlar her biri ayri kova alip siniri anlamsiz kilardi.
+ */
+export function authAttemptKey(req: Request): string {
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const norm = (value: unknown): string => (typeof value === 'string' ? value.trim().toLowerCase() : '');
+  return `${req.ip ?? 'anonim'}:${norm(body.tenantSlug ?? body.slug)}:${norm(body.email ?? body.adminEmail)}`;
+}
+
+/**
  * Sabit pencere (fixed window) hiz siniri.
  *
  * Sayac erisilemezse istek engellenmez (fail-open) — bildirim altyapisi

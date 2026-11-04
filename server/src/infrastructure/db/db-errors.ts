@@ -28,6 +28,9 @@ export function mapDbError(err: unknown): DomainError | null {
       return invalid('Veri dogrulama kurali ihlal edildi.', { constraint: e.constraint });
     case '22P02':
       return invalid('Gecersiz deger formati.');
+    case '22021':
+      // Metinde NUL (\u0000) gibi veritabani kodlamasinda gecersiz bir karakter.
+      return invalid('Metin gecersiz bir karakter iceriyor.');
     case '42501':
       return forbidden('Veritabani seviyesinde erisim reddedildi (RLS).');
     default:

@@ -35,6 +35,21 @@ export function makeErrorHandler(log: Logger, exposeDebug: boolean) {
       return;
     }
 
+    // Express'in kendi istemci hatalari (bozuk JSON, buyuk govde, gecersiz URL
+    // kodlamasi) `status` ve `expose` tasir; bunlar sunucu hatasi degildir.
+    const clientError = err as { status?: unknown; expose?: unknown };
+    if (typeof clientError.status === 'number' && clientError.status >= 400 && clientError.status < 500 && clientError.expose) {
+      const tooLarge = clientError.status === 413;
+      log.debug({ status: clientError.status, path: req.path }, 'Gecersiz istek');
+      res.status(clientError.status).json({
+        error: {
+          code: tooLarge ? 'PAYLOAD_TOO_LARGE' : 'BAD_REQUEST',
+          message: tooLarge ? 'Istek govdesi cok buyuk' : 'Istek govdesi ya da adresi gecersiz',
+        },
+      });
+      return;
+    }
+
     log.error({ err, path: req.path, method: req.method }, 'Beklenmeyen sunucu hatasi');
     res.status(500).json({
       error: {

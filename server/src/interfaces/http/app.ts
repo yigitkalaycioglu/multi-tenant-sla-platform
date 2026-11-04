@@ -14,7 +14,7 @@ import type { TicketUseCases } from '../../application/tickets/ticket.use-cases.
 import type { UserUseCases } from '../../application/users/user.use-cases.js';
 import { makeErrorHandler, notFoundHandler } from './error-handler.js';
 import { makeRequireAuth } from './middleware/auth.js';
-import { makeRateLimit, type RateLimitCounter } from './middleware/rate-limit.js';
+import { authAttemptKey, makeRateLimit, type RateLimitCounter } from './middleware/rate-limit.js';
 import { authRoutes } from './routes/auth.routes.js';
 import { reportRoutes } from './routes/report.routes.js';
 import { slaPolicyRoutes } from './routes/sla-policy.routes.js';
@@ -135,7 +135,7 @@ export function createApp({ useCases, tokens, rateLimitCounter, healthChecks, lo
     keyPrefix: 'auth',
     max: 10,
     windowSeconds: 300,
-    keyOf: (req) => `${req.ip ?? 'anonim'}:${String((req.body as { email?: string })?.email ?? '')}`,
+    keyOf: authAttemptKey,
   });
 
   app.use('/api', generalRateLimit);
