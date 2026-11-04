@@ -14,6 +14,7 @@ import { makeTicketUseCases } from '../../src/application/tickets/ticket.use-cas
 import type { AuthUser } from '../../src/domain/identity.js';
 import { MINUTE_MS } from '../../src/domain/sla/sla-engine.js';
 import type { SlaPolicy } from '../../src/domain/sla/sla-policy.js';
+import type { TicketVisibility } from '../../src/domain/tickets/ticket-access.js';
 import type { Ticket, TicketChanges } from '../../src/domain/tickets/ticket.js';
 
 const NOW = new Date('2025-03-10T12:00:00.000Z');
@@ -61,7 +62,13 @@ function setup(existing: Ticket[] = []) {
     updatedAt: t.createdAt,
   });
 
-  // Testler admin ile calisir; gorunurluk kapsami burada bilincli olarak yok sayilir.
+  // Gercek SQL'deki gorunurluk kosulunun (ticket-visibility.sql.ts) aynisi.
+  const visible = (t: Ticket, v: TicketVisibility): boolean =>
+    v.scope === 'tenant' ||
+    t.assigneeId === v.userId ||
+    t.reporterId === v.userId ||
+    (v.teamId !== null && t.teamId === v.teamId);
+
   const repos = {
     tickets: {
       nextSequence: async () => ++state.sequence,
@@ -84,8 +91,14 @@ function setup(existing: Ticket[] = []) {
         } as Ticket);
         return id;
       },
-      findRecord: async (id: string) => (state.tickets.has(id) ? asRecord(state.tickets.get(id)!) : null),
-      lockForUpdate: async (id: string) => state.tickets.get(id) ?? null,
+      findRecord: async (id: string, v: TicketVisibility) => {
+        const t = state.tickets.get(id);
+        return t && visible(t, v) ? asRecord(t) : null;
+      },
+      lockForUpdate: async (id: string, v: TicketVisibility) => {
+        const t = state.tickets.get(id);
+        return t && visible(t, v) ? t : null;
+      },
       update: async (id: string, changes: TicketChanges) => {
         state.tickets.set(id, { ...state.tickets.get(id)!, ...changes });
       },
@@ -154,6 +167,28 @@ describe('bilet olusturma', () => {
     ]);
   });
 
+  it('gelistirici bilet acarken atama yapamaz (atama yetkisi gerekir)', async () => {
+    const { useCases, state } = setup();
+    const developer: AuthUser = { ...admin, id: 'dev-2', role: 'developer', teamId: 'team-1' };
+
+    await expect(
+      useCases.create(developer, { title: 'Odeme servisi 502', priority: 'high', teamId: 'team-1', assigneeId: 'dev-1' }),
+    ).rejects.toMatchObject({ kind: 'forbidden' });
+    expect(state.tickets.size).toBe(0);
+  });
+
+  it('ekip lideri yalnizca kendi ekibine acilan bilette atama yapabilir', async () => {
+    const { useCases } = setup();
+    const lead: AuthUser = { ...admin, id: 'lead-1', role: 'team_lead', teamId: 'team-1' };
+
+    await expect(
+      useCases.create(lead, { title: 'Baska ekibin isi', priority: 'high', teamId: 'team-2', assigneeId: 'dev-1' }),
+    ).rejects.toMatchObject({ kind: 'forbidden' });
+    await expect(
+      useCases.create(lead, { title: 'Kendi ekibinin isi', priority: 'high', teamId: 'team-1', assigneeId: 'dev-1' }),
+    ).resolves.toMatchObject({ assignee: { id: 'dev-1' } });
+  });
+
   it('islem geri alinirsa hicbir kayit kalmaz ve bildirim gitmez', async () => {
     const { useCases, state, published, enqueued } = setup();
 
@@ -205,8 +240,21 @@ describe('bilet guncelleme', () => {
     expect(saved.pausedTotalSeconds).toBe(30 * 60);
     expect(saved.resolutionDueAt).toEqual(new Date(onHold.createdAt.getTime() + (240 + 30) * MINUTE_MS));
     expect(saved.slaPolicyId).toBe('p-urgent');
-    expect(state.events.map((e) => e.type)).toEqual(['status_changed']);
+    expect(state.events.map((e) => e.type)).toEqual(['status_changed', 'priority_changed']);
     expect(published[0]?.payload).toMatchObject({ changes: ['status', 'priority'] });
+  });
+
+  it('ekip lideri ekibinin biletini baska ekibe devredebilir ve degisiklik zaman tunelinde gorunur', async () => {
+    // Lider bileti acan ya da ustlenen kisi degil: devirden sonra bileti artik goremez,
+    // yine de yaptigi degisikligin sonucunu almali (onceden 404 ile geri aliniyordu).
+    const { useCases, state } = setup([{ ...onHold, status: 'in_progress', pausedAt: null, reporterId: 'admin-1' }]);
+    const lead: AuthUser = { ...admin, id: 'lead-1', role: 'team_lead', teamId: 'team-1' };
+
+    const dto = await useCases.update(lead, 'ticket-1', { teamId: 'team-2' });
+
+    expect(dto.team?.id).toBe('team-2');
+    expect(state.tickets.get('ticket-1')!.teamId).toBe('team-2');
+    expect(state.events).toEqual([{ ticketId: 'ticket-1', type: 'team_changed' }]);
   });
 
   it('gelistirici atama yapamaz; hicbir degisiklik yazilmaz', async () => {

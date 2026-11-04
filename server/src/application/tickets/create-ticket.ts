@@ -1,7 +1,7 @@
-import { invalid } from '../../domain/errors.js';
-import type { AuthUser } from '../../domain/identity.js';
+import { forbidden, invalid } from '../../domain/errors.js';
+import { can, type AuthUser } from '../../domain/identity.js';
 import { computeDueDates } from '../../domain/sla/sla-engine.js';
-import { ticketVisibilityFor } from '../../domain/tickets/ticket-access.js';
+import { canManageTicket, ticketVisibilityFor } from '../../domain/tickets/ticket-access.js';
 import { formatTicketReference, type TicketPriority } from '../../domain/tickets/ticket.js';
 import { audienceOf, toTicketDto, type TicketDto } from './ticket-dto.js';
 import { requireRecord } from './ticket-lookup.js';
@@ -17,6 +17,15 @@ export interface CreateTicketInput {
 
 export function makeCreateTicket({ tx, realtime, notifications, clock, log, slaRiskThreshold }: TicketDeps) {
   return async function createTicket(actor: AuthUser, input: CreateTicketInput): Promise<TicketDto> {
+    // Acilista atama, guncellemedeki atamayla ayni kurala tabidir: atama yetkisi
+    // ve yeni biletin ekibi uzerinde yonetim yetkisi (ekip lideri icin kendi ekibi).
+    if (input.assigneeId) {
+      if (!can(actor.role, 'ticket:assign')) throw forbidden('Atama yapma yetkiniz yok');
+      if (!canManageTicket(actor, { teamId: input.teamId ?? null })) {
+        throw forbidden('Yalnizca kendi ekibinizin biletlerinde atama yapabilirsiniz');
+      }
+    }
+
     const { dto, assigneeEmail } = await tx.run(actor.tenantId, async ({ tickets, slaPolicies, users }) => {
       // 1) Kiraci bazli bilet numarasi. Sayac satiri transaction bitene kadar
       //    kilitli kalir; baska bir istek ayni numarayi alamaz.

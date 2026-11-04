@@ -64,6 +64,7 @@ export function makeUpdateTicket({ tx, realtime, notifications, clock, slaRiskTh
           if (patch.teamId && !(await teams.exists(patch.teamId))) throw invalid('Ekip bulunamadi');
           apply({ teamId: patch.teamId });
           changed.push('team');
+          await tickets.recordEvent(ticketId, actor.id, 'team_changed', { from: current.teamId, to: patch.teamId });
         }
 
         // --- Atama ------------------------------------------------------------
@@ -107,11 +108,18 @@ export function makeUpdateTicket({ tx, realtime, notifications, clock, slaRiskTh
           const policy = await slaPolicies.findByPriority(patch.priority);
           apply(changePriority({ ...current, ...changes }, patch.priority, policy));
           changed.push('priority');
+          await tickets.recordEvent(ticketId, actor.id, 'priority_changed', {
+            from: current.priority,
+            to: patch.priority,
+          });
         }
 
         if (Object.keys(changes).length > 0) await tickets.update(ticketId, changes);
 
-        const record = await requireRecord(tickets, ticketId, visibility);
+        // Yetki, kilitlenen satir uzerinden zaten dogrulandi. Sonucu kullanicinin
+        // kapsamiyla yeniden okumak, bileti baska ekibe devreden liderin kendi
+        // isleminin 404 ile geri alinmasina yol acardi; RLS kiraci sinirini korur.
+        const record = await requireRecord(tickets, ticketId, { scope: 'tenant' });
         return { dto: toTicketDto(record, clock.now(), slaRiskThreshold), changed, newAssigneeEmail };
       },
     );
