@@ -24,14 +24,17 @@ x-app-env: &app-env
   JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-dev-refresh-secret-change-me-fedcba9876543210}
   ACCESS_TOKEN_TTL: ${ACCESS_TOKEN_TTL:-15m}
   REFRESH_TOKEN_TTL_DAYS: ${REFRESH_TOKEN_TTL_DAYS:-7}
-  CORS_ORIGIN: ${CORS_ORIGIN:-http://localhost:8080}
+  # Tarayicinin kullandigi adres web servisidir (nginx). Bu iki deger bilerek
+  # .env'den okunmaz: .env.example yerel gelistirme (Vite, 5173) icindir ve
+  # README'deki `cp .env.example .env` adimi e-posta baglantilarini bozardi.
+  CORS_ORIGIN: http://localhost:${WEB_PORT:-8080}
   SLA_SCAN_INTERVAL_MS: ${SLA_SCAN_INTERVAL_MS:-60000}
   SLA_RISK_THRESHOLD: ${SLA_RISK_THRESHOLD:-0.8}
   SMTP_HOST: mailpit
   SMTP_PORT: 1025
   SMTP_SECURE: "false"
   MAIL_FROM: ${MAIL_FROM:-SLA Platform <no-reply@slaplatform.local>}
-  APP_PUBLIC_URL: ${APP_PUBLIC_URL:-http://localhost:8080}
+  APP_PUBLIC_URL: http://localhost:${WEB_PORT:-8080}
   SEED_PASSWORD: ${SEED_PASSWORD:-Passw0rd!}
 
 services:
@@ -111,7 +114,10 @@ services:
       migrate:
         condition: service_completed_successfully
     ports:
-      - '${API_PORT:-4000}:4000'
+      # Yalnizca bu makineden erisilir. Disaridan gelen trafik nginx (web) uzerinden
+      # gecmeli: API 'trust proxy 1' ile X-Forwarded-For'a guvenir; port disariya
+      # acik olsaydi bu baslik uydurularak hiz siniri atlatilabilirdi.
+      - '127.0.0.1:${API_PORT:-4000}:4000'
 
   worker:
     build:
@@ -126,6 +132,10 @@ services:
       migrate:
         condition: service_completed_successfully
     command: ['node', 'dist/main/worker.js']
+    # Imajdaki HEALTHCHECK API'nin HTTP ucuna bakar; worker HTTP dinlemez ve
+    # aksi halde surekli "unhealthy" gorunurdu.
+    healthcheck:
+      disable: true
 
   web:
     build:

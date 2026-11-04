@@ -146,6 +146,10 @@ jobs:
             sleep 5
           done
           exit 1
+      - name: Hicbir servis unhealthy degil
+        run: |
+          docker compose ps
+          ! docker compose ps --format '{{.Service}} {{.Health}}' | grep -i unhealthy
       - name: Demo hesabiyla nginx uzerinden giris
         run: |
           curl -fsS http://localhost:8080/ | grep -q 'id="root"'
