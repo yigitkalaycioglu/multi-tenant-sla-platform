@@ -1,3 +1,4 @@
+import type { TicketAudience } from '../../domain/tickets/ticket-access.js';
 import type { TicketPriority } from '../../domain/tickets/ticket.js';
 
 export interface RealtimeMessage {
@@ -10,6 +11,11 @@ export interface RealtimeMessage {
   userIds?: string[];
   /** Verilirse ilgili bilet odasina da gonderilir. */
   ticketId?: string;
+  /**
+   * Olay bilet verisi tasiyorsa verilir: yalnizca bu bileti gorebilen
+   * kullanicilara iletilir (HTTP'deki rol kapsamiyla ayni kural).
+   */
+  audience?: TicketAudience;
 }
 
 /**

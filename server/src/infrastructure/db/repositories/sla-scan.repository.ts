@@ -27,6 +27,9 @@ interface ScanRow {
   title: string;
   priority: TicketPriority;
   due_at: Date;
+  team_id: string | null;
+  assignee_id: string | null;
+  reporter_id: string | null;
   recipients: string[];
   watchers: string[];
 }
@@ -85,9 +88,18 @@ export function buildScanSql(window: SlaWindow, transition: SlaTransition): stri
         FROM candidates c
        WHERE t.id = c.id
       RETURNING t.id, t.tenant_id, t.reference, t.title, t.priority,
-                t.${col.due} AS due_at, t.assignee_id, t.team_id
+                t.${col.due} AS due_at, t.assignee_id, t.team_id, t.reporter_id
+    ),
+    -- Gecis, ayni ifadede biletin zaman tuneline de yazilir. Sistem baglantisi
+    -- RLS disinda calistigi icin tenant_id acikca verilir.
+    timeline AS (
+      INSERT INTO ticket_events (tenant_id, ticket_id, actor_id, type, payload)
+      SELECT u.tenant_id, u.id, NULL, '${transition === 'breached' ? 'sla_breached' : 'sla_at_risk'}',
+             jsonb_build_object('window', '${window}', 'dueAt', u.due_at)
+        FROM updated u
     )
-    SELECT u.id, u.tenant_id, u.reference, u.title, u.priority, u.due_at, u.assignee_id,
+    SELECT u.id, u.tenant_id, u.reference, u.title, u.priority, u.due_at,
+           u.team_id, u.assignee_id, u.reporter_id,
            COALESCE(ARRAY(
              SELECT DISTINCT usr.email::text
                FROM users usr
@@ -132,6 +144,7 @@ export function createSlaScanRepository(adminPool: pg.Pool): SlaScanRepository {
           dueAt: r.due_at,
           emailRecipients: r.recipients,
           watcherIds: r.watchers,
+          audience: { teamId: r.team_id, assigneeId: r.assignee_id, reporterId: r.reporter_id },
         }),
       );
     },

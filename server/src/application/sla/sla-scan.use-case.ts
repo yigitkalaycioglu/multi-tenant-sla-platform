@@ -39,6 +39,7 @@ export function makeRunSlaScan({ scanner, realtime, notifications, clock, log, r
         event: transition === 'breached' ? 'sla:breached' : 'sla:at_risk',
         ticketId: hit.ticketId,
         ...(hit.watcherIds.length ? { userIds: hit.watcherIds } : {}),
+        audience: hit.audience,
         payload: {
           ticketId: hit.ticketId,
           reference: hit.reference,
@@ -62,7 +63,10 @@ export function makeRunSlaScan({ scanner, realtime, notifications, clock, log, r
           dueAt: hit.dueAt.toISOString(),
           recipients: hit.emailRecipients,
         },
-        `${transition}:${window}:${hit.ticketId}`,
+        // Hedef tarihi anahtara dahildir: oncelik degisimi ya da yeniden acma
+        // sonrasi yeni bir hedefin ihlali, ilk bildirimle ayni anahtari alip
+        // kuyrukta sessizce dusurulmez; ayni gecisin tekrari ise yine tekildir.
+        `${transition}:${window}:${hit.ticketId}:${hit.dueAt.getTime()}`,
       );
     }
 

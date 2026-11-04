@@ -5,6 +5,7 @@ import type { Logger } from '../../src/application/ports/runtime.js';
 import { DomainError, forbidden, type ErrorKind } from '../../src/domain/errors.js';
 import { HTTP_ERRORS, makeErrorHandler } from '../../src/interfaces/http/error-handler.js';
 import { getAuth } from '../../src/interfaces/http/middleware/auth.js';
+import { authAttemptKey } from '../../src/interfaces/http/middleware/rate-limit.js';
 import { offsetOf, paginationSchema, parseOrThrow } from '../../src/interfaces/http/validation.js';
 
 function errorOf(fn: () => unknown): DomainError {
@@ -96,7 +97,38 @@ describe('domain hatalarinin HTTP yanitina cevrilmesi', () => {
     expect(res.json).toHaveBeenCalledWith({ error: { code: 'INTERNAL', message: 'Sunucu hatasi' } });
   });
 
+  it('bozuk JSON govdesi 500 degil 400 olur; buyuk govde 413 olur', () => {
+    // body-parser/router hatalari `status` ve `expose` tasir (http-errors).
+    const parseError = Object.assign(new SyntaxError('Unexpected token'), { status: 400, expose: true, type: 'entity.parse.failed' });
+    const res = fakeResponse();
+    makeErrorHandler(silentLog, false)(parseError, { path: '/x' } as Request, res as unknown as Response, vi.fn());
+    expect(res.status).toHaveBeenCalledWith(400);
+    expect(res.json).toHaveBeenCalledWith({ error: expect.objectContaining({ code: 'BAD_REQUEST' }) });
+
+    const tooLarge = Object.assign(new Error('request entity too large'), { status: 413, expose: true, type: 'entity.too.large' });
+    const res2 = fakeResponse();
+    makeErrorHandler(silentLog, false)(tooLarge, { path: '/x' } as Request, res2 as unknown as Response, vi.fn());
+    expect(res2.status).toHaveBeenCalledWith(413);
+    expect(res2.json).toHaveBeenCalledWith({ error: expect.objectContaining({ code: 'PAYLOAD_TOO_LARGE' }) });
+  });
+
   it('oturum yoksa "unauthenticated" hatasi firlatilir', () => {
     expect(errorOf(() => getAuth({} as Request)).kind).toBe('unauthenticated');
+  });
+});
+
+describe('kimlik dogrulama hiz siniri anahtari', () => {
+  const req = (body: unknown) => ({ ip: '10.0.0.1', body }) as unknown as Request;
+
+  it('e-postanin buyuk/kucuk harf ve bosluk varyasyonlari ayni kovaya duser', () => {
+    const base = authAttemptKey(req({ tenantSlug: 'kuzey', email: 'mert@kuzey.io' }));
+    expect(authAttemptKey(req({ tenantSlug: 'KUZEY ', email: '  Mert@Kuzey.IO ' }))).toBe(base);
+  });
+
+  it('kayit govdesindeki adminEmail ve slug da kullanilir; govde yoksa da calisir', () => {
+    expect(authAttemptKey(req({ slug: 'acme', adminEmail: 'A@acme.com' }))).toBe(
+      authAttemptKey(req({ tenantSlug: 'acme', email: 'a@acme.com' })),
+    );
+    expect(authAttemptKey(req(undefined))).toBe('10.0.0.1::');
   });
 });

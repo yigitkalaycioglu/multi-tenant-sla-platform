@@ -3,6 +3,7 @@ import { Link, useNavigate, useParams } from 'react-router-dom';
 import { useAddComment, useDeleteTicket, useTeams, useTicket, useUpdateTicket, useUsers } from '../api/hooks';
 import { useAuth } from '../context/AuthContext';
 import { useTicketRoom } from '../context/SocketContext';
+import { useToast } from '../context/ToastContext';
 import { Icon } from '../components/Icon';
 import { ErrorNote, Modal, Pill, PriorityPill, SlaCell, StatusPill } from '../components/ui';
 import {
@@ -14,7 +15,7 @@ import {
   formatRelative,
   initials,
 } from '../lib/format';
-import type { TicketPriority, TicketStatus } from '../api/types';
+import type { Ticket, TicketPriority, TicketStatus } from '../api/types';
 
 /** Sunucudaki gecis matrisinin aynasi — kullaniciya yalnizca gecerli secenekler gosterilir. */
 const STATUS_TRANSITIONS: Record<TicketStatus, TicketStatus[]> = {
@@ -29,6 +30,7 @@ export function TicketDetailPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
   const { user, is } = useAuth();
+  const { push } = useToast();
 
   useTicketRoom(id);
 
@@ -50,6 +52,13 @@ export function TicketDetailPage(): React.JSX.Element {
 
   const canManage = is('admin') || (is('team_lead') && ticket.team?.id === user?.teamId);
   const canChangeStatus = canManage || ticket.assignee?.id === user?.id;
+
+  /** Sunucudaki gorunurluk kuraliyla ayni: admin, atanan, acan ya da ayni ekip. */
+  const stillVisible = (t: Ticket): boolean =>
+    is('admin') ||
+    t.assignee?.id === user?.id ||
+    t.reporter?.id === user?.id ||
+    (Boolean(user?.teamId) && t.team?.id === user?.teamId);
 
   const submitComment = (event: FormEvent): void => {
     event.preventDefault();
@@ -324,7 +333,23 @@ export function TicketDetailPage(): React.JSX.Element {
                   className="select"
                   value={ticket.team?.id ?? ''}
                   disabled={!canManage || update.isPending}
-                  onChange={(event) => update.mutate({ teamId: event.target.value || null })}
+                  onChange={(event) =>
+                    update.mutate(
+                      { teamId: event.target.value || null },
+                      {
+                        onSuccess: ({ ticket: moved }) => {
+                          // Baska ekibe devredilen bileti lider artik goremeyebilir.
+                          if (stillVisible(moved)) return;
+                          push({
+                            tone: 'info',
+                            title: 'Bilet devredildi',
+                            text: `${moved.reference} artik ${moved.team?.name ?? 'ekipsiz'}`,
+                          });
+                          void navigate('/tickets', { replace: true });
+                        },
+                      },
+                    )
+                  }
                 >
                   <option value="">Ekip yok</option>
                   {(teams.data?.items ?? []).map((team) => (

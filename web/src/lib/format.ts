@@ -143,6 +143,10 @@ export function describeEvent(
   const actor = actorName ?? 'Sistem';
   const status = (value: unknown): string =>
     typeof value === 'string' && value in STATUS_LABELS ? STATUS_LABELS[value as TicketStatus] : String(value ?? '');
+  const priority = (value: unknown): string =>
+    typeof value === 'string' && value in PRIORITY_LABELS
+      ? PRIORITY_LABELS[value as TicketPriority]
+      : String(value ?? '');
 
   switch (type) {
     case 'created':
@@ -161,6 +165,12 @@ export function describeEvent(
       return { text: `${actor} atamayi kaldirdi`, tone: 'neutral', icon: 'user' };
     case 'team_changed':
       return { text: `${actor} ekibi degistirdi`, tone: 'neutral', icon: 'flag' };
+    case 'priority_changed':
+      return {
+        text: `${actor} onceligi "${priority(payload.from)}" -> "${priority(payload.to)}" yapti`,
+        tone: 'info',
+        icon: 'flag',
+      };
     case 'commented':
       return {
         text: `${actor} ${payload.isInternal ? 'dahili not' : 'yorum'} ekledi`,

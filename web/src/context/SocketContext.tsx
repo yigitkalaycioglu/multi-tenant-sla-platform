@@ -1,7 +1,7 @@
 import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
 import { io, type Socket } from 'socket.io-client';
-import { getAccessToken } from '../api/client';
+import { auth, getAccessToken } from '../api/client';
 import { invalidateTicketViews, keys } from '../api/hooks';
 import { useAuth } from './AuthContext';
 import { useToast } from './ToastContext';
@@ -66,9 +66,24 @@ export function SocketProvider({ children }: { children: ReactNode }): React.JSX
       reconnectionDelayMax: 6_000,
     });
 
-    instance.on('connect', () => setConnected(true));
+    // Sunucu el sikismayi reddederse (genellikle suresi dolmus access token)
+    // Socket.io istemcisi kendiliginden YENIDEN DENEMEZ (`active` false olur).
+    // Token bir kez yenilenip baglanti elle kurulur; dongu olusmasin diye bir
+    // basarili baglantiya kadar tek deneme yapilir.
+    let authRetried = false;
+    instance.on('connect', () => {
+      authRetried = false;
+      setConnected(true);
+    });
     instance.on('disconnect', () => setConnected(false));
-    instance.on('connect_error', () => setConnected(false));
+    instance.on('connect_error', () => {
+      setConnected(false);
+      if (instance.active || authRetried) return;
+      authRetried = true;
+      void auth.refresh().then((session) => {
+        if (session) instance.connect();
+      });
+    });
 
     instance.on('ticket:created', (ticket: Ticket) => {
       invalidateTicketViews(queryClient);
@@ -104,6 +119,7 @@ export function SocketProvider({ children }: { children: ReactNode }): React.JSX
 
     instance.on('sla:at_risk', (payload: SlaEventPayload) => {
       invalidateTicketViews(queryClient);
+      void queryClient.invalidateQueries({ queryKey: keys.ticket(payload.ticketId) });
       push({
         tone: 'warning',
         title: 'SLA suresi dolmak uzere',
@@ -113,6 +129,7 @@ export function SocketProvider({ children }: { children: ReactNode }): React.JSX
 
     instance.on('sla:breached', (payload: SlaEventPayload) => {
       invalidateTicketViews(queryClient);
+      void queryClient.invalidateQueries({ queryKey: keys.ticket(payload.ticketId) });
       push({
         tone: 'critical',
         title: 'SLA suresi asildi',

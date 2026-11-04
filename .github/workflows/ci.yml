@@ -74,3 +74,93 @@ jobs:
         run: npm run migrate
       - name: RLS entegrasyon testleri
         run: npm run test:db
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: sla_platform
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d sla_platform"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+        options: >-
+          --health-cmd "redis-cli ping"
+          --health-interval 5s
+          --health-timeout 3s
+          --health-retries 20
+      mailpit:
+        image: axllent/mailpit:latest
+        ports:
+          - 1025:1025
+          - 8025:8025
+    env:
+      DATABASE_ADMIN_URL: postgres://postgres:postgres@localhost:5432/sla_platform
+      DATABASE_URL: postgres://app_user:app_user_pw@localhost:5432/sla_platform
+      REDIS_URL: redis://localhost:6379
+      SMTP_HOST: localhost
+      SMTP_PORT: '1025'
+      MAILPIT_URL: http://localhost:8025
+      JWT_ACCESS_SECRET: ci-access-secret-0123456789
+      JWT_REFRESH_SECRET: ci-refresh-secret-0123456789
+      SLA_SCAN_INTERVAL_MS: '5000'
+      RUN_E2E: '1'
+    defaults:
+      run:
+        working-directory: server
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+          cache-dependency-path: server/package-lock.json
+      - run: npm ci
+      - name: Migration
+        run: npm run migrate
+      - name: Uctan uca API testleri
+        run: npm run test:e2e
+
+  compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: cp .env.example .env
+      - name: Imajlari derle ve ayaga kaldir
+        run: docker compose up -d --build
+      - name: Sistemin hazir olmasini bekle
+        run: |
+          for i in $(seq 1 60); do
+            if curl -fsS http://localhost:8080/api/health; then exit 0; fi
+            sleep 5
+          done
+          exit 1
+      - name: Hicbir servis unhealthy degil
+        run: |
+          docker compose ps
+          ! docker compose ps --format '{{.Service}} {{.Health}}' | grep -i unhealthy
+      - name: Demo hesabiyla nginx uzerinden giris
+        run: |
+          curl -fsS http://localhost:8080/ | grep -q 'id="root"'
+          curl -fsS -c cookies.txt -H 'content-type: application/json' \
+            -d '{"tenantSlug":"kuzey","email":"admin@kuzey.io","password":"Passw0rd!"}' \
+            http://localhost:8080/api/auth/login > login.json
+          TOKEN=$(node -e "console.log(require('./login.json').accessToken)")
+          curl -fsS -H "authorization: Bearer $TOKEN" 'http://localhost:8080/api/tickets?pageSize=5' | grep -q '"total":46'
+      - name: Hata durumunda loglar
+        if: failure()
+        run: docker compose logs --no-color
+      - name: Kapat
+        if: always()
+        run: docker compose down -v

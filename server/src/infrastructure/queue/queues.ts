@@ -15,6 +15,15 @@ const defaultJobOptions: JobsOptions = {
   removeOnFail: { age: 86_400 },
 };
 
+/**
+ * Tekillestirme anahtarini BullMQ'nun kabul ettigi is kimligine cevirir.
+ *
+ * BullMQ ozel `jobId` icinde ':' karakterine yalnizca tam uc parca halinde izin
+ * verir (eski tekrarli is bicimiyle uyumluluk icin); aksi halde `add()` hata
+ * firlatir. Uygulama anahtarlari ':' ile kurdugu icin burada '_' ile degistirilir.
+ */
+export const toJobId = (key: string): string => key.replaceAll(':', '_');
+
 /** NotificationQueue portunun BullMQ uygulamasi (ureticisi). */
 export function createNotificationQueue(redisUrl: string, log: Logger): NotificationQueue & { close(): Promise<void> } {
   const queueLog = log.child({ module: 'queue' });
@@ -28,7 +37,7 @@ export function createNotificationQueue(redisUrl: string, log: Logger): Notifica
         return;
       }
 
-      await queue.add(job.kind, job, { jobId: dedupeKey ?? `${job.kind}:${job.ticketId}` });
+      await queue.add(job.kind, job, { jobId: toJobId(dedupeKey ?? `${job.kind}:${job.ticketId}`) });
       queueLog.debug(
         { kind: job.kind, ticketId: job.ticketId, recipients: job.recipients.length },
         'Bildirim kuyruga alindi',

@@ -28,4 +28,6 @@ export interface TeamRepository {
   /** Ekip yoksa false doner. */
   delete(id: string): Promise<boolean>;
   hasOpenTickets(id: string): Promise<boolean>;
+  /** Kullaniciyi lideri oldugu ekiplerden cikarir; `keepTeamId` verilirse o ekip haric. */
+  clearLead(userId: string, keepTeamId: string | null): Promise<void>;
 }

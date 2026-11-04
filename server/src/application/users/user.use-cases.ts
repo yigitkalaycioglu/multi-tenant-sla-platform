@@ -57,7 +57,7 @@ export function makeUserUseCases({ tx, hasher }: UserDeps) {
     async update(actor: AuthUser, userId: string, patch: UserPatch) {
       assertPermission(actor, 'user:manage');
 
-      return tx.run(actor.tenantId, async ({ users }) => {
+      return tx.run(actor.tenantId, async ({ users, teams }) => {
         // Kiracinin son aktif admin'i kilitlenemez / rolu dusurulemez.
         if (dropsAdminRights(patch)) {
           if (userId === actor.id) throw invalid('Kendi yonetici yetkinizi kaldiramazsiniz');
@@ -67,7 +67,18 @@ export function makeUserUseCases({ tx, hasher }: UserDeps) {
         }
 
         if (!(await users.update(userId, patch))) throw notFound('Kullanici bulunamadi');
-        return toDto((await users.findRecord(userId))!);
+        const updated = (await users.findRecord(userId))!;
+
+        // Ekip liderligi kullanicinin yeni durumuyla tutarli kalir: aksi halde
+        // SLA e-postalari, artik acamadigi biletler icin eski lidere gider.
+        // Admin tum kiraciyi gordugu icin her ekibe lider olabilir.
+        if (!updated.isActive || updated.role === 'developer') {
+          await teams.clearLead(userId, null);
+        } else if (updated.role === 'team_lead' && patch.teamId !== undefined) {
+          await teams.clearLead(userId, updated.teamId);
+        }
+
+        return toDto(updated);
       });
     },
   };

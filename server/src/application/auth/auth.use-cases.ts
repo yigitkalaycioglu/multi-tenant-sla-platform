@@ -139,14 +139,16 @@ export function makeAuthUseCases({ tx, tenants, hasher, tokens, clock, log }: Au
       const tenant = await tenants.findById(parsed.tenantId);
       if (!tenant || !tenant.isActive) throw unauthenticated('Oturum yenilenemedi');
 
-      return tx.run(tenant.id, async (repos) => {
+      const outcome = await tx.run(tenant.id, async (repos) => {
         const stored = await repos.refreshTokens.findByHashForUpdate(tokens.hashRefreshToken(parsed.token));
         if (!stored) throw unauthenticated('Oturum yenilenemedi');
 
         if (stored.revokedAt) {
+          // Burada hata FIRLATILMAZ: firlatilsa transaction geri alinir ve
+          // oturumlari kapatan UPDATE de geri alinmis olurdu. Once commit
+          // edilir, hata disarida firlatilir.
           await repos.refreshTokens.revokeAllForUser(stored.userId);
-          authLog.warn({ userId: stored.userId }, 'Iptal edilmis refresh token kullanildi, oturumlar kapatildi');
-          throw unauthenticated('Oturum gecersiz kilindi, tekrar giris yapin');
+          return { reusedBy: stored.userId } as const;
         }
 
         if (stored.expiresAt.getTime() <= clock.now().getTime()) throw unauthenticated('Oturum suresi doldu');
@@ -155,8 +157,14 @@ export function makeAuthUseCases({ tx, tenants, hasher, tokens, clock, log }: Au
         if (!account || !account.isActive) throw unauthenticated('Kullanici bulunamadi veya pasif');
 
         await repos.refreshTokens.revoke(stored.id);
-        return issueSession(repos, { ...toAuthUser(account), tenantSlug: tenant.slug }, userAgent);
+        return { session: await issueSession(repos, { ...toAuthUser(account), tenantSlug: tenant.slug }, userAgent) };
       });
+
+      if ('reusedBy' in outcome) {
+        authLog.warn({ userId: outcome.reusedBy }, 'Iptal edilmis refresh token kullanildi, oturumlar kapatildi');
+        throw unauthenticated('Oturum gecersiz kilindi, tekrar giris yapin');
+      }
+      return outcome.session;
     },
 
     /** Cikis her zaman basarili sayilir; token iptal edilemese bile istemci oturumu kapatir. */

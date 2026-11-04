@@ -1,3 +1,4 @@
+import type { TicketAudience } from '../../domain/tickets/ticket-access.js';
 import type { TicketPriority } from '../../domain/tickets/ticket.js';
 
 export type SlaWindow = 'response' | 'resolution';
@@ -15,6 +16,8 @@ export interface SlaTransitionHit {
   emailRecipients: string[];
   /** Canli bildirim alacak kullanici kimlikleri. */
   watcherIds: string[];
+  /** Bileti kimlerin gorebilecegini belirleyen alanlar. */
+  audience: TicketAudience;
 }
 
 /**

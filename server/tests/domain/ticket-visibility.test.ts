@@ -4,6 +4,7 @@ import {
   canChangeTicketStatus,
   canEditTicketContent,
   canManageTicket,
+  canSeeTicket,
   ticketVisibilityFor,
 } from '../../src/domain/tickets/ticket-access.js';
 import { visibilitySql } from '../../src/infrastructure/db/repositories/ticket-visibility.sql.js';
@@ -52,6 +53,22 @@ describe('gorunurlugun SQL karsiligi', () => {
     const params: unknown[] = [];
     expect(visibilitySql(ticketVisibilityFor(developer), params)).toBe('(t.assignee_id = $1 OR t.reporter_id = $1)');
     expect(params).toEqual(['user-1']);
+  });
+});
+
+describe('tekil bilet gorunurlugu (canSeeTicket)', () => {
+  const ticket = { teamId: 'team-9', assigneeId: 'baska', reporterId: 'baska' };
+
+  it('SQL kapsamiyla ayni kurali uygular', () => {
+    expect(canSeeTicket({ ...developer, role: 'admin' }, ticket)).toBe(true);
+    expect(canSeeTicket({ ...developer, teamId: 'team-9' }, ticket)).toBe(true);
+    expect(canSeeTicket({ ...developer, teamId: 'team-1' }, ticket)).toBe(false);
+    expect(canSeeTicket(developer, { ...ticket, assigneeId: 'user-1' })).toBe(true);
+    expect(canSeeTicket(developer, { ...ticket, reporterId: 'user-1' })).toBe(true);
+  });
+
+  it('ekibi olmayan kullanici ekipsiz biletleri ekip eslesmesiyle goremez', () => {
+    expect(canSeeTicket(developer, { teamId: null, assigneeId: null, reporterId: null })).toBe(false);
   });
 });
 
