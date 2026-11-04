@@ -74,6 +74,13 @@ export function createTeamRepository(db: Queryable, tenantId: string): TeamRepos
       return (result.rowCount ?? 0) > 0;
     },
 
+    async clearLead(userId, keepTeamId) {
+      await db.query(
+        'UPDATE teams SET lead_id = NULL WHERE lead_id = $1 AND ($2::uuid IS NULL OR id <> $2::uuid)',
+        [userId, keepTeamId],
+      );
+    },
+
     async hasOpenTickets(id) {
       const result = await db.query(
         `SELECT 1 FROM tickets WHERE team_id = $1 AND status NOT IN ('resolved','closed') LIMIT 1`,
