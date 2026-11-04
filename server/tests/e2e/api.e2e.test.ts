@@ -269,6 +269,11 @@ describe.skipIf(!enabled)('uctan uca API', { timeout: 60_000 }, () => {
 
     const search = await call('GET', '/api/tickets?search=TCK-000001', { token: admin.token });
     expect(search.body.total).toBe(1);
+
+    // Yalnizca bosluktan olusan arama filtre sayilmaz (onceden 400 donuyordu).
+    const blank = await call('GET', '/api/tickets?search=%20%20', { token: admin.token });
+    expect(blank.status).toBe(200);
+    expect(blank.body.total).toBe(1);
   });
 
   it('rol kurallari: gelistirici atama ve oncelik degistiremez, durumu degistirebilir', async () => {
@@ -286,6 +291,9 @@ describe.skipIf(!enabled)('uctan uca API', { timeout: 60_000 }, () => {
   it('ekip lideri onceligi degistirir ve SLA hedefleri yeniden hesaplanir', async () => {
     const res = await call('PATCH', `/api/tickets/${ticketId}`, { token: lead.token, body: { priority: 'urgent' } });
     expect(res.status, JSON.stringify(res.body)).toBe(200);
+    expect(
+      (await call('GET', `/api/tickets/${ticketId}`, { token: lead.token })).body.events.map((e: { type: string }) => e.type),
+    ).toContain('priority_changed');
     const t = res.body.ticket;
     const created = new Date(t.createdAt).getTime();
     expect(new Date(t.sla.response.dueAt).getTime() - created).toBe(15 * 60_000);
@@ -376,6 +384,15 @@ describe.skipIf(!enabled)('uctan uca API', { timeout: 60_000 }, () => {
 
     const teams = await call('GET', '/api/teams', { token: dev.token });
     expect(teams.body.items[0]).toMatchObject({ id: teamId, memberCount: 2, openTicketCount: 1 });
+
+    // Lider gelistiriciye dusurulunce ekibin lideri bosalir.
+    const setLead = await call('PATCH', `/api/teams/${teamId}`, { token: admin.token, body: { leadId } });
+    expect(setLead.status, JSON.stringify(setLead.body)).toBe(200);
+    expect(setLead.body.team.lead.id).toBe(leadId);
+    const demote = await call('PATCH', `/api/users/${leadId}`, { token: admin.token, body: { role: 'developer' } });
+    expect(demote.status, JSON.stringify(demote.body)).toBe(200);
+    const afterDemote = await call('GET', '/api/teams', { token: admin.token });
+    expect(afterDemote.body.items[0].lead).toBeNull();
   });
 
   it('rapor ozeti rol kapsamina gore hesaplanir', async () => {
@@ -465,6 +482,10 @@ describe.skipIf(!enabled)('uctan uca API', { timeout: 60_000 }, () => {
 
     const detail = await call('GET', `/api/tickets/${lateId}`, { token: dev.token });
     expect(detail.body.ticket.sla.resolution.state).toBe('breached');
+    // Tarayicinin gecisi zaman tunelinde de gorunur.
+    expect(detail.body.events).toEqual(
+      expect.arrayContaining([expect.objectContaining({ type: 'sla_breached', actor: null })]),
+    );
   }, 120_000);
 
   it('admin bileti siler; gelistirici silemez', async () => {
