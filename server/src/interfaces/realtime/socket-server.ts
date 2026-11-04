@@ -4,6 +4,7 @@ import type { RealtimeMessage } from '../../application/ports/events.js';
 import type { Logger } from '../../application/ports/runtime.js';
 import type { TokenService } from '../../application/ports/security.js';
 import type { AuthUser } from '../../domain/identity.js';
+import { canSeeTicket } from '../../domain/tickets/ticket-access.js';
 
 interface SocketData {
   user: AuthUser;
@@ -12,8 +13,25 @@ interface SocketData {
 export const rooms = {
   tenant: (tenantId: string) => `tenant:${tenantId}`,
   user: (userId: string) => `user:${userId}`,
-  ticket: (ticketId: string) => `ticket:${ticketId}`,
+  /**
+   * Bilet odasi kiraci kapsamlidir. Baska bir kiracinin kullanicisi ayni bilet
+   * kimligiyle abone olsa bile kendi kiracisinin odasina girer ve bu olayi almaz.
+   */
+  ticket: (tenantId: string, ticketId: string) => `tenant:${tenantId}:ticket:${ticketId}`,
 };
+
+/**
+ * Bu olay bu kullaniciya iletilebilir mi?
+ *
+ * Oda hedeflemesi kaba bir filtredir: Socket.io'da `.to(a).to(b)` odalarin
+ * BIRLESIMINE gider. Asil karar burada verilir: olay yalnizca ayni kiraciya ve
+ * bilet verisi tasiyorsa yalnizca o bileti gorebilen kullanicilara gider —
+ * HTTP'deki rol kapsamiyla ayni kural.
+ */
+export function canReceive(user: AuthUser, message: RealtimeMessage): boolean {
+  if (user.tenantId !== message.tenantId) return false;
+  return !message.audience || canSeeTicket(user, message.audience);
+}
 
 export interface RealtimeDeps {
   tokens: TokenService;
@@ -68,12 +86,12 @@ export function initRealtime(httpServer: HttpServer, { tokens, subscribe, corsOr
     // Bilet detay ekrani acildiginda o biletin odasina katilir.
     socket.on('ticket:subscribe', (ticketId: unknown) => {
       if (typeof ticketId === 'string' && ticketId.length <= 64) {
-        void socket.join(rooms.ticket(ticketId));
+        void socket.join(rooms.ticket(user.tenantId, ticketId));
       }
     });
 
     socket.on('ticket:unsubscribe', (ticketId: unknown) => {
-      if (typeof ticketId === 'string') void socket.leave(rooms.ticket(ticketId));
+      if (typeof ticketId === 'string') void socket.leave(rooms.ticket(user.tenantId, ticketId));
     });
 
     socket.on('disconnect', (reason) => {
@@ -83,14 +101,21 @@ export function initRealtime(httpServer: HttpServer, { tokens, subscribe, corsOr
 
   // --- Olay kanalindan gelenleri bagli soketlere dagit ----------------------
   const unsubscribe = subscribe((message) => {
-    // BroadcastOperator degismezdir: .to() yeni bir operator dondurur.
-    let target = message.userIds?.length
-      ? io.to(message.userIds.map((id) => rooms.user(id)))
-      : io.to(rooms.tenant(message.tenantId));
+    const targets = message.userIds?.length
+      ? message.userIds.map((id) => rooms.user(id))
+      : [rooms.tenant(message.tenantId)];
+    if (message.ticketId) targets.push(rooms.ticket(message.tenantId, message.ticketId));
 
-    if (message.ticketId) target = target.to(rooms.ticket(message.ticketId));
-
-    target.emit(message.event, message.payload);
+    // Her API ornegi kanali ayri dinler; yalnizca kendisine bagli soketlere iletir.
+    io.local
+      .in(targets)
+      .fetchSockets()
+      .then((sockets) => {
+        for (const socket of sockets) {
+          if (canReceive((socket.data as SocketData).user, message)) socket.emit(message.event, message.payload);
+        }
+      })
+      .catch((err: unknown) => realtimeLog.error({ err, event: message.event }, 'Olay iletilemedi'));
   });
 
   return {

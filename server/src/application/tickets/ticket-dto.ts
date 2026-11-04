@@ -1,5 +1,6 @@
 import { evaluateSlaWindow } from '../../domain/sla/sla-engine.js';
 import type { SlaState } from '../../domain/sla/sla-policy.js';
+import type { TicketAudience } from '../../domain/tickets/ticket-access.js';
 import type { TicketEventType, TicketPriority, TicketStatus } from '../../domain/tickets/ticket.js';
 import type { TicketCommentRecord, TicketEventRecord, TicketRecord } from './ticket.ports.js';
 
@@ -104,6 +105,11 @@ export function toTicketDto(record: TicketRecord, now: Date, riskThreshold: numb
     createdAt: record.createdAt.toISOString(),
     updatedAt: record.updatedAt.toISOString(),
   };
+}
+
+/** Canli olayin kimlere iletilecegini belirleyen alanlar. */
+export function audienceOf(dto: TicketDto): TicketAudience {
+  return { teamId: dto.team?.id ?? null, assigneeId: dto.assignee?.id ?? null, reporterId: dto.reporter?.id ?? null };
 }
 
 export function toEventDto(e: TicketEventRecord): TicketEventDto {

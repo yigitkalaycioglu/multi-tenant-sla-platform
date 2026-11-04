@@ -13,7 +13,7 @@ import {
   type TicketPriority,
   type TicketStatus,
 } from '../../domain/tickets/ticket.js';
-import { toTicketDto, type TicketDto } from './ticket-dto.js';
+import { audienceOf, toTicketDto, type TicketDto } from './ticket-dto.js';
 import { requireLocked, requireRecord } from './ticket-lookup.js';
 import type { TicketDeps } from './ticket.use-cases.js';
 
@@ -121,6 +121,7 @@ export function makeUpdateTicket({ tx, realtime, notifications, clock, slaRiskTh
         tenantId: actor.tenantId,
         event: 'ticket:updated',
         ticketId: dto.id,
+        audience: audienceOf(dto),
         payload: { ticket: dto, changes: changed, actor: { id: actor.id, name: actor.fullName } },
       });
     }

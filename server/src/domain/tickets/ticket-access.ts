@@ -22,6 +22,23 @@ export function ticketVisibilityFor(actor: AuthUser): TicketVisibility {
   return { scope: 'participant', userId: actor.id, teamId: actor.teamId };
 }
 
+/** Bir biletin kimlere gorunecegini belirleyen alanlar. */
+export type TicketAudience = Pick<Ticket, 'teamId' | 'assigneeId' | 'reporterId'>;
+
+/**
+ * Bu kullanici bu bileti gorebilir mi? `ticketVisibilityFor` ile ayni kural,
+ * tekil bilet icin (orn. canli olaylarin kime iletilecegine karar verirken).
+ */
+export function canSeeTicket(actor: AuthUser, ticket: TicketAudience): boolean {
+  const visibility = ticketVisibilityFor(actor);
+  if (visibility.scope === 'tenant') return true;
+  return (
+    ticket.assigneeId === visibility.userId ||
+    ticket.reporterId === visibility.userId ||
+    (visibility.teamId !== null && ticket.teamId === visibility.teamId)
+  );
+}
+
 /** Biletin uzerinde yonetsel degisiklik (atama, oncelik, ekip) yapabilir mi? */
 export function canManageTicket(actor: AuthUser, ticket: Pick<Ticket, 'teamId'>): boolean {
   if (actor.role === 'admin') return true;

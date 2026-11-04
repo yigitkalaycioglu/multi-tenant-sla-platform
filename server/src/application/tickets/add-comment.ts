@@ -1,7 +1,7 @@
 import type { AuthUser } from '../../domain/identity.js';
 import { ticketVisibilityFor } from '../../domain/tickets/ticket-access.js';
 import { registerFirstResponse } from '../../domain/tickets/ticket-lifecycle.js';
-import { toTicketDto, type TicketCommentDto } from './ticket-dto.js';
+import { audienceOf, toTicketDto, type TicketCommentDto } from './ticket-dto.js';
 import { requireLocked, requireRecord } from './ticket-lookup.js';
 import type { TicketDeps } from './ticket.use-cases.js';
 
@@ -52,6 +52,7 @@ export function makeAddComment({ tx, realtime, clock, slaRiskThreshold }: Ticket
       tenantId: actor.tenantId,
       event: 'ticket:comment',
       ticketId,
+      audience: audienceOf(ticket),
       payload: { ticketId, comment, ticket, firstResponse },
     });
 

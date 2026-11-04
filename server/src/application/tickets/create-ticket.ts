@@ -3,7 +3,7 @@ import type { AuthUser } from '../../domain/identity.js';
 import { computeDueDates } from '../../domain/sla/sla-engine.js';
 import { ticketVisibilityFor } from '../../domain/tickets/ticket-access.js';
 import { formatTicketReference, type TicketPriority } from '../../domain/tickets/ticket.js';
-import { toTicketDto, type TicketDto } from './ticket-dto.js';
+import { audienceOf, toTicketDto, type TicketDto } from './ticket-dto.js';
 import { requireRecord } from './ticket-lookup.js';
 import type { TicketDeps } from './ticket.use-cases.js';
 
@@ -58,7 +58,13 @@ export function makeCreateTicket({ tx, realtime, notifications, clock, log, slaR
     });
 
     // Transaction kapandiktan SONRA yan etkiler: canli olay + e-posta kuyrugu.
-    await realtime.publish({ tenantId: actor.tenantId, event: 'ticket:created', payload: dto, ticketId: dto.id });
+    await realtime.publish({
+      tenantId: actor.tenantId,
+      event: 'ticket:created',
+      payload: dto,
+      ticketId: dto.id,
+      audience: audienceOf(dto),
+    });
 
     if (assigneeEmail && dto.assignee) {
       await notifications.enqueue(

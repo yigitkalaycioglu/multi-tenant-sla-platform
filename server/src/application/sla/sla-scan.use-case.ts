@@ -39,6 +39,7 @@ export function makeRunSlaScan({ scanner, realtime, notifications, clock, log, r
         event: transition === 'breached' ? 'sla:breached' : 'sla:at_risk',
         ticketId: hit.ticketId,
         ...(hit.watcherIds.length ? { userIds: hit.watcherIds } : {}),
+        audience: hit.audience,
         payload: {
           ticketId: hit.ticketId,
           reference: hit.reference,
