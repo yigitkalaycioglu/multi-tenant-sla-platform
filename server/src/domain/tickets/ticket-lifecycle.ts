@@ -29,6 +29,13 @@ export function changeStatus(ticket: Ticket, next: TicketStatus, now: Date): Tic
     throw invalid(`"${ticket.status}" durumundan "${next}" durumuna gecilemez`);
   }
 
+  // Cozulmus bileti kapatmak yalnizca kapanis anini yazar: cozum ani ve SLA
+  // sonucu cozuldugu anda muhurlenmistir. Aksi halde zamaninda cozulup ertesi
+  // gun kapatilan bilet "breached" sayilir ve raporlardaki uyum orani bozulur.
+  if (ticket.status === 'resolved' && next === 'closed') {
+    return { status: next, closedAt: now };
+  }
+
   const changes: TicketChanges = { status: next };
 
   // Muhurleme, beklemeden cikista kaydirilan GUNCEL hedeflerle yapilmali;

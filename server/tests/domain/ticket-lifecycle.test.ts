@@ -76,6 +76,20 @@ describe('durum gecisi', () => {
     expect(changes).not.toHaveProperty('firstResponseAt');
   });
 
+  it('zamaninda cozulmus bileti sonradan kapatmak cozum anini ve SLA sonucunu degistirmez', () => {
+    // Gelistirici 100. dakikada cozdu (hedef 480: zamaninda); lider ertesi gun kapatiyor.
+    const resolved = ticket({
+      status: 'resolved',
+      resolvedAt: at(100),
+      firstResponseAt: at(20),
+      responseSlaState: 'met',
+      resolutionSlaState: 'met',
+    });
+    const changes = changeStatus(resolved, 'closed', at(2000));
+
+    expect(changes).toEqual({ status: 'closed', closedAt: at(2000) });
+  });
+
   it('beklemeden dogrudan cozulen bilet kaydirilmis hedefe gore muhurlenir', () => {
     // 400. dakikada beklemeye alindi, 200 dk bekledi, 600. dakikada cozuldu.
     // Aktif sure 400 dk < 480 dk hedef: zamaninda. Kaydirilmis hedef = 680. dakika.
